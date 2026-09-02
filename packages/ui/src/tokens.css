@@ -1,0 +1,47 @@
+:root {
+  color-scheme: light;
+  --color-ink-950: oklch(20% 0.022 167);
+  --color-ink-900: oklch(25% 0.025 167);
+  --color-ink-800: oklch(33% 0.022 167);
+  --color-ink-700: oklch(42% 0.018 167);
+  --color-ink-600: oklch(50% 0.016 167);
+  --color-ink-500: oklch(58% 0.014 167);
+  --color-ink-300: oklch(78% 0.012 167);
+  --color-ink-200: oklch(86% 0.01 167);
+  --color-ink-100: oklch(93% 0.009 167);
+  --color-paper: oklch(97.5% 0.012 92);
+  --color-paper-raised: oklch(99% 0.008 92);
+  --color-paper-deep: oklch(94.5% 0.014 92);
+  --color-green-900: oklch(27% 0.062 162);
+  --color-green-800: oklch(34% 0.078 162);
+  --color-green-700: oklch(43% 0.092 162);
+  --color-green-500: oklch(60% 0.112 156);
+  --color-green-100: oklch(93% 0.035 155);
+  --color-amber-800: oklch(48% 0.105 67);
+  --color-amber-600: oklch(66% 0.13 72);
+  --color-amber-100: oklch(94% 0.04 85);
+  --color-red-800: oklch(45% 0.15 27);
+  --color-red-600: oklch(57% 0.18 27);
+  --color-red-100: oklch(94% 0.035 25);
+  --color-blue-700: oklch(45% 0.08 236);
+  --color-blue-100: oklch(94% 0.025 236);
+  --font-body: "Avenir Next", Avenir, "Segoe UI", sans-serif;
+  --font-editorial:
+    "Iowan Old Style", "Palatino Linotype", Palatino, Georgia, serif;
+  --radius-1: 6px;
+  --radius-2: 10px;
+  --radius-3: 16px;
+  --space-1: 0.25rem;
+  --space-2: 0.5rem;
+  --space-3: 0.75rem;
+  --space-4: 1rem;
+  --space-6: 1.5rem;
+  --space-8: 2rem;
+  --space-12: 3rem;
+  --shadow-1:
+    0 1px 2px oklch(20% 0.02 167 / 0.05), 0 6px 18px oklch(20% 0.02 167 / 0.04);
+  --shadow-2: 0 8px 32px oklch(20% 0.02 167 / 0.11);
+  --ease-out: cubic-bezier(0.16, 1, 0.3, 1);
+  --content-max: 1440px;
+  --sidebar-width: 248px;
+}

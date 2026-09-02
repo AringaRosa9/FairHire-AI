@@ -1,0 +1,92 @@
+{
+  "schema_version": "1.0.0",
+  "task_type": "binary_classification",
+  "decision_positive_value": true,
+  "label_positive_value": true,
+  "fields": [
+    {
+      "name": "candidate_id",
+      "role": "identifier",
+      "data_type": "string",
+      "nullable": false,
+      "allowed_values": null,
+      "vault_only": false
+    },
+    {
+      "name": "selected",
+      "role": "decision",
+      "data_type": "boolean",
+      "nullable": false,
+      "allowed_values": [true, false],
+      "vault_only": false
+    },
+    {
+      "name": "qualified_after_90_days",
+      "role": "label",
+      "data_type": "boolean",
+      "nullable": true,
+      "allowed_values": [true, false],
+      "vault_only": false
+    },
+    {
+      "name": "decision_at",
+      "role": "timestamp",
+      "data_type": "datetime",
+      "nullable": false,
+      "allowed_values": null,
+      "vault_only": false
+    },
+    {
+      "name": "gender",
+      "role": "protected_attribute",
+      "data_type": "category",
+      "nullable": true,
+      "allowed_values": [
+        "woman",
+        "man",
+        "non_binary",
+        "self_described",
+        "unknown"
+      ],
+      "vault_only": true
+    }
+  ],
+  "minimum_samples": {
+    "organization_default": 200,
+    "hard_suppression_floor": 20,
+    "confidence_level": 0.95,
+    "conclusion_when_below_default": "insufficient_evidence",
+    "suppress_raw_counts_below_floor": true
+  },
+  "threshold_source": {
+    "source_type": "approved_test_strategy",
+    "source_id": "strategy-eu-binary-v1",
+    "version": "1.0.0",
+    "approved_by": null,
+    "effective_from": "2026-09-01",
+    "legal_determination": false
+  },
+  "metrics": [
+    {
+      "key": "selection_rate",
+      "requires_label": false,
+      "value_range": [0, 1],
+      "comparison": "absolute",
+      "uncertainty_method": "wilson"
+    },
+    {
+      "key": "demographic_parity_ratio",
+      "requires_label": false,
+      "value_range": [0, 1],
+      "comparison": "ratio",
+      "uncertainty_method": "bootstrap_percentile"
+    },
+    {
+      "key": "true_positive_rate",
+      "requires_label": true,
+      "value_range": [0, 1],
+      "comparison": "difference",
+      "uncertainty_method": "bootstrap_percentile"
+    }
+  ]
+}

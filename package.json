@@ -1,0 +1,26 @@
+{
+  "name": "fairhire-ai",
+  "version": "0.1.0",
+  "private": true,
+  "engines": {
+    "node": ">=22.0.0"
+  },
+  "workspaces": [
+    "apps/web",
+    "packages/ui",
+    "packages/api-client"
+  ],
+  "scripts": {
+    "dev": "npm run dev --workspace @fairhire/web",
+    "build": "npm run build --workspaces --if-present",
+    "lint": "npm run lint --workspaces --if-present",
+    "test": "npm run test --workspaces --if-present",
+    "test:e2e": "npm run test:e2e --workspace @fairhire/web",
+    "generate:client": "npm run generate --workspace @fairhire/api-client",
+    "typecheck": "npm run typecheck --workspaces --if-present",
+    "format:check": "prettier --check ."
+  },
+  "devDependencies": {
+    "prettier": "3.8.2"
+  }
+}

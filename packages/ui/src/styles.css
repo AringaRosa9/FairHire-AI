@@ -1,0 +1,123 @@
+@import "./tokens.css";
+
+.fh-button {
+  min-height: 44px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  padding: 0.65rem 1rem;
+  border: 1px solid var(--color-ink-300);
+  border-radius: var(--radius-1);
+  background: transparent;
+  color: var(--color-ink-900);
+  cursor: pointer;
+  font-weight: 650;
+  text-decoration: none;
+  transition:
+    background 160ms ease,
+    border-color 160ms ease,
+    color 160ms ease,
+    transform 160ms ease;
+}
+
+.fh-button:hover {
+  border-color: var(--color-green-700);
+  background: var(--color-green-100);
+}
+
+.fh-button:active {
+  transform: translateY(1px);
+}
+
+.fh-button[data-variant="primary"] {
+  border-color: var(--color-green-900);
+  background: var(--color-green-900);
+  color: var(--color-paper-raised);
+}
+
+.fh-button[data-variant="primary"]:hover {
+  background: var(--color-green-800);
+}
+
+.fh-status {
+  width: max-content;
+  max-width: 100%;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.42rem;
+  padding: 0.25rem 0.6rem;
+  border-radius: 999px;
+  font-size: 0.76rem;
+  font-weight: 700;
+  line-height: 1.25;
+}
+
+.fh-status::before {
+  content: "";
+  width: 0.42rem;
+  height: 0.42rem;
+  flex: 0 0 auto;
+  border-radius: 50%;
+  background: currentColor;
+}
+
+.fh-status[data-tone="approved"] {
+  background: var(--color-green-100);
+  color: var(--color-green-800);
+}
+.fh-status[data-tone="review"] {
+  background: var(--color-amber-100);
+  color: var(--color-amber-800);
+}
+.fh-status[data-tone="blocked"] {
+  background: var(--color-red-100);
+  color: var(--color-red-800);
+}
+.fh-status[data-tone="draft"] {
+  background: var(--color-blue-100);
+  color: var(--color-blue-700);
+}
+.fh-status[data-tone="insufficient"] {
+  background: var(--color-ink-100);
+  color: var(--color-ink-700);
+}
+
+.fh-severity {
+  width: 2.4rem;
+  height: 2.4rem;
+  display: inline-grid;
+  place-items: center;
+  flex: 0 0 auto;
+  border-radius: 50%;
+  font-family: var(--font-editorial);
+  font-size: 0.73rem;
+  font-style: italic;
+  font-weight: 700;
+}
+
+.fh-severity[data-level="critical"],
+.fh-severity[data-level="high"] {
+  background: var(--color-red-100);
+  color: var(--color-red-800);
+}
+.fh-severity[data-level="medium"] {
+  background: var(--color-amber-100);
+  color: var(--color-amber-800);
+}
+.fh-severity[data-level="low"] {
+  background: var(--color-green-100);
+  color: var(--color-green-800);
+}
+
+@media (pointer: coarse) {
+  .fh-button {
+    min-height: 48px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .fh-button {
+    transition: none;
+  }
+}

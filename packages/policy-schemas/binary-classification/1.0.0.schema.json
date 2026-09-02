@@ -1,0 +1,157 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://schemas.fairhire.example/data-contract/binary-classification/1.0.0",
+  "title": "FairHire binary classification audit input",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "task_type",
+    "decision_positive_value",
+    "fields",
+    "minimum_samples",
+    "threshold_source",
+    "metrics"
+  ],
+  "properties": {
+    "schema_version": { "const": "1.0.0" },
+    "task_type": { "const": "binary_classification" },
+    "decision_positive_value": { "type": ["string", "integer", "boolean"] },
+    "label_positive_value": {
+      "type": ["string", "integer", "boolean", "null"]
+    },
+    "fields": {
+      "type": "array",
+      "minItems": 3,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["name", "role", "data_type", "nullable", "vault_only"],
+        "properties": {
+          "name": { "type": "string", "minLength": 1 },
+          "role": {
+            "enum": [
+              "identifier",
+              "feature",
+              "protected_attribute",
+              "label",
+              "prediction",
+              "decision",
+              "timestamp",
+              "metadata"
+            ]
+          },
+          "data_type": {
+            "enum": [
+              "string",
+              "integer",
+              "number",
+              "boolean",
+              "date",
+              "datetime",
+              "category"
+            ]
+          },
+          "nullable": { "type": "boolean" },
+          "allowed_values": {
+            "type": ["array", "null"],
+            "items": { "type": ["string", "integer", "number", "boolean"] }
+          },
+          "vault_only": { "type": "boolean" }
+        }
+      }
+    },
+    "minimum_samples": {
+      "type": "object",
+      "required": [
+        "organization_default",
+        "hard_suppression_floor",
+        "confidence_level",
+        "conclusion_when_below_default",
+        "suppress_raw_counts_below_floor"
+      ],
+      "properties": {
+        "organization_default": {
+          "type": "integer",
+          "minimum": 20,
+          "default": 200
+        },
+        "hard_suppression_floor": {
+          "type": "integer",
+          "minimum": 5,
+          "default": 20
+        },
+        "confidence_level": {
+          "type": "number",
+          "exclusiveMinimum": 0.5,
+          "exclusiveMaximum": 1,
+          "default": 0.95
+        },
+        "conclusion_when_below_default": { "const": "insufficient_evidence" },
+        "suppress_raw_counts_below_floor": { "const": true }
+      }
+    },
+    "threshold_source": {
+      "type": "object",
+      "required": [
+        "source_type",
+        "source_id",
+        "version",
+        "effective_from",
+        "legal_determination"
+      ],
+      "properties": {
+        "source_type": {
+          "enum": ["organization_policy", "rule_pack", "approved_test_strategy"]
+        },
+        "source_id": { "type": "string" },
+        "version": { "type": "string" },
+        "approved_by": { "type": ["string", "null"] },
+        "effective_from": { "type": "string", "format": "date" },
+        "legal_determination": { "const": false }
+      }
+    },
+    "metrics": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "required": [
+          "key",
+          "requires_label",
+          "value_range",
+          "comparison",
+          "uncertainty_method"
+        ],
+        "properties": {
+          "key": {
+            "enum": [
+              "selection_rate",
+              "demographic_parity_difference",
+              "demographic_parity_ratio",
+              "true_positive_rate",
+              "false_positive_rate",
+              "equal_opportunity_difference",
+              "equalized_odds_difference",
+              "precision",
+              "calibration",
+              "error_rate"
+            ]
+          },
+          "requires_label": { "type": "boolean" },
+          "value_range": {
+            "type": "array",
+            "prefixItems": [{ "type": "number" }, { "type": "number" }],
+            "items": false
+          },
+          "comparison": {
+            "enum": ["absolute", "difference", "ratio", "curve"]
+          },
+          "uncertainty_method": {
+            "enum": ["bootstrap_percentile", "wilson", "calibration_curve"]
+          }
+        }
+      }
+    }
+  }
+}

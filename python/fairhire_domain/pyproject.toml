@@ -1,0 +1,11 @@
+[build-system]
+requires = ["hatchling>=1.27.0"]
+build-backend = "hatchling.build"
+
+[project]
+name = "fairhire-domain"
+version = "0.1.0"
+description = "Shared FairHire domain rules and contracts"
+requires-python = ">=3.12"
+dependencies = ["pydantic>=2.12,<3"]
+

@@ -1,0 +1,15 @@
+*.md
+index.html
+contracts/openapi.json
+packages/api-client/src/schema.ts
+apps/api/
+apps/worker/
+python/
+tests/
+.next/
+node_modules/
+.venv/
+coverage/
+playwright-report/
+test-results/
+
