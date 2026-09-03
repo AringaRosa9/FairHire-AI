@@ -44,4 +44,30 @@ describe("createApiClient", () => {
       fetcher: fetcher as typeof fetch,
     }).getAuditMetrics("run-1", "fairness");
   });
+
+  it("sends a named idempotent finding transition", async () => {
+    const fetcher = vi.fn(
+      async (_input: RequestInfo | URL, init?: RequestInit) => {
+        const headers = new Headers(init?.headers);
+        expect(init?.method).toBe("POST");
+        expect(headers.get("Idempotency-Key")).toBe("transition-1");
+        expect(JSON.parse(String(init?.body))).toEqual({
+          status: "triaged",
+          reason: "Responsible owner reviewed the evidence",
+        });
+        return new Response(JSON.stringify({ id: "fnd-1" }), { status: 200 });
+      },
+    );
+    await createApiClient({
+      baseUrl: "http://api.test/v1",
+      fetcher: fetcher as typeof fetch,
+    }).transitionFinding(
+      "fnd-1",
+      {
+        status: "triaged",
+        reason: "Responsible owner reviewed the evidence",
+      },
+      "transition-1",
+    );
+  });
 });

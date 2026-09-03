@@ -37,7 +37,8 @@ erDiagram
     AUDIT_RUN ||--o{ METRIC_RESULT : produces
     AUDIT_RUN ||--o{ FINDING : raises
     FINDING ||--o{ REMEDIATION_TASK : assigns
-    FINDING ||--o{ APPROVAL : gates
+    FINDING ||--o{ FINDING_RETEST : verifies
+    AI_SYSTEM ||--o{ APPROVAL : gates
     AUDIT_RUN ||--o{ REPORT : freezes
     REPORT ||--o{ EVIDENCE_REF : cites
     ORGANIZATION ||--o{ AUDIT_EVENT : records
@@ -58,4 +59,3 @@ erDiagram
 - API and worker are separate images and processes. Worker task serialization accepts JSON only.
 - OIDC verification is an adapter behind `OIDCVerifier`; development header authentication is rejected by configuration in production.
 - Large uploads do not pass through the API process. A later ingestion route issues short-lived, content-type constrained signed URLs.
-

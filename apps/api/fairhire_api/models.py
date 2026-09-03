@@ -228,6 +228,92 @@ class MetricResult(Base):
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utc_now)
 
 
+class Finding(Base):
+    __tablename__ = "findings"
+    id: Mapped[str] = mapped_column(String(36), primary_key=True)
+    organization_id: Mapped[str] = mapped_column(ForeignKey("organizations.id"), index=True)
+    ai_system_id: Mapped[str] = mapped_column(ForeignKey("ai_systems.id"), index=True)
+    audit_run_id: Mapped[str | None] = mapped_column(ForeignKey("audit_runs.id"), index=True)
+    source_metric_id: Mapped[str | None] = mapped_column(
+        ForeignKey("metric_results.id", ondelete="SET NULL")
+    )
+    title: Mapped[str] = mapped_column(String(240), nullable=False)
+    description: Mapped[str] = mapped_column(Text, nullable=False)
+    severity: Mapped[str] = mapped_column(String(16), nullable=False)
+    confidence: Mapped[str] = mapped_column(String(16), nullable=False)
+    affected_groups: Mapped[list[str]] = mapped_column(JSON, nullable=False, default=list)
+    evidence_refs: Mapped[list[str]] = mapped_column(JSON, nullable=False, default=list)
+    control_refs: Mapped[list[str]] = mapped_column(JSON, nullable=False, default=list)
+    recommended_control: Mapped[str | None] = mapped_column(Text)
+    owner_id: Mapped[str] = mapped_column(String(200), nullable=False)
+    owner_name: Mapped[str] = mapped_column(String(160), nullable=False)
+    due_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, index=True)
+    status: Mapped[str] = mapped_column(String(32), nullable=False, default="open", index=True)
+    residual_risk: Mapped[str | None] = mapped_column(Text)
+    acceptance_reason: Mapped[str | None] = mapped_column(Text)
+    accepted_by: Mapped[str | None] = mapped_column(String(200))
+    accepted_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    accepted_until: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), index=True)
+    created_by: Mapped[str] = mapped_column(String(200), nullable=False)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utc_now)
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), default=utc_now, onupdate=utc_now
+    )
+
+
+class RemediationTask(Base):
+    __tablename__ = "remediation_tasks"
+    id: Mapped[str] = mapped_column(String(36), primary_key=True)
+    organization_id: Mapped[str] = mapped_column(ForeignKey("organizations.id"), index=True)
+    finding_id: Mapped[str] = mapped_column(ForeignKey("findings.id"), index=True)
+    title: Mapped[str] = mapped_column(String(240), nullable=False)
+    description: Mapped[str | None] = mapped_column(Text)
+    owner_id: Mapped[str] = mapped_column(String(200), nullable=False)
+    owner_name: Mapped[str] = mapped_column(String(160), nullable=False)
+    due_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, index=True)
+    status: Mapped[str] = mapped_column(String(24), nullable=False, default="open", index=True)
+    evidence_refs: Mapped[list[str]] = mapped_column(JSON, nullable=False, default=list)
+    completed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    created_by: Mapped[str] = mapped_column(String(200), nullable=False)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utc_now)
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), default=utc_now, onupdate=utc_now
+    )
+
+
+class FindingRetest(Base):
+    __tablename__ = "finding_retests"
+    id: Mapped[str] = mapped_column(String(36), primary_key=True)
+    organization_id: Mapped[str] = mapped_column(ForeignKey("organizations.id"), index=True)
+    finding_id: Mapped[str] = mapped_column(ForeignKey("findings.id"), index=True)
+    audit_run_id: Mapped[str] = mapped_column(ForeignKey("audit_runs.id"), index=True)
+    outcome: Mapped[str] = mapped_column(String(24), nullable=False)
+    notes: Mapped[str] = mapped_column(Text, nullable=False)
+    performed_by: Mapped[str] = mapped_column(String(200), nullable=False)
+    performed_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utc_now)
+
+
+class Approval(Base):
+    __tablename__ = "approvals"
+    __table_args__ = (
+        UniqueConstraint("organization_id", "ai_system_id", "chain_version", "stage"),
+    )
+    id: Mapped[str] = mapped_column(String(36), primary_key=True)
+    organization_id: Mapped[str] = mapped_column(ForeignKey("organizations.id"), index=True)
+    ai_system_id: Mapped[str] = mapped_column(ForeignKey("ai_systems.id"), index=True)
+    chain_version: Mapped[int] = mapped_column(Integer, nullable=False, default=1)
+    stage: Mapped[str] = mapped_column(String(32), nullable=False)
+    sequence: Mapped[int] = mapped_column(Integer, nullable=False)
+    decision: Mapped[str] = mapped_column(String(24), nullable=False, default="pending", index=True)
+    approver_id: Mapped[str | None] = mapped_column(String(200))
+    approver_name: Mapped[str | None] = mapped_column(String(160))
+    reason: Mapped[str | None] = mapped_column(Text)
+    decided_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    expires_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), index=True)
+    created_by: Mapped[str] = mapped_column(String(200), nullable=False)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utc_now)
+
+
 class BackgroundJob(Base):
     __tablename__ = "background_jobs"
     id: Mapped[str] = mapped_column(String(36), primary_key=True)

@@ -1,8 +1,13 @@
+from datetime import UTC, datetime, timedelta
+
 import pytest
+from fairhire_domain.access import Role
 from fastapi.testclient import TestClient
 from sqlalchemy.orm import Session
 
-from fairhire_api.models import AuditRun, MetricResult
+from fairhire_api.main import app
+from fairhire_api.models import AuditRun, Finding, MetricResult
+from fairhire_api.security import Principal, get_principal
 
 
 def test_health_is_public_and_versioned(client: TestClient) -> None:
@@ -293,3 +298,211 @@ def test_version_comparison_does_not_leak_cross_tenant_baselines(
         "/v1/audit-runs/run-metrics/comparison?baseline_run_id=run-secret-baseline"
     )
     assert response.status_code == 404
+
+
+def _create_finding(
+    client: TestClient,
+    *,
+    severity: str = "critical",
+    key: str = "finding-create",
+) -> dict[str, object]:
+    response = client.post(
+        "/v1/findings",
+        headers={"Idempotency-Key": key},
+        json={
+            "ai_system_id": "sys-one",
+            "audit_run_id": "run-metrics",
+            "source_metric_id": "metric-one",
+            "title": "Selection rate gap exceeds the approved internal threshold",
+            "description": (
+                "The latest audit shows a material selection-rate gap that requires "
+                "an accountable review."
+            ),
+            "severity": severity,
+            "confidence": "high",
+            "affected_groups": ["women"],
+            "evidence_refs": ["metric:metric-one", "audit:run-metrics"],
+            "control_refs": ["POL-FR-02", "EU-AI-ACT-ART-10"],
+            "recommended_control": "Review features and retrain before release.",
+            "owner_id": "maya@example.test",
+            "owner_name": "Maya Chen",
+            "due_at": (datetime.now(UTC) + timedelta(days=7)).isoformat(),
+        },
+    )
+    assert response.status_code == 201
+    return response.json()
+
+
+def _transition(client: TestClient, finding_id: str, target: str, key: str) -> dict[str, object]:
+    response = client.post(
+        f"/v1/findings/{finding_id}/transition",
+        headers={"Idempotency-Key": key},
+        json={"status": target, "reason": f"Move to {target} after accountable review"},
+    )
+    assert response.status_code == 200
+    return response.json()
+
+
+def test_critical_finding_blocks_final_approval_until_valid_exception(
+    client: TestClient,
+) -> None:
+    finding = _create_finding(client)
+    finding_id = str(finding["id"])
+    assert client.get("/v1/ai-systems/sys-one/release-gate").json()["status"] == "blocked"
+
+    chain_response = client.post(
+        "/v1/ai-systems/sys-one/approval-chain",
+        headers={"Idempotency-Key": "chain-start"},
+        json={"reason": "Release candidate is ready for accountable review"},
+    )
+    assert chain_response.status_code == 201
+    approvals = chain_response.json()["items"]
+    for approval in approvals[:2]:
+        response = client.post(
+            f"/v1/approvals/{approval['id']}/decision",
+            headers={"Idempotency-Key": f"approve-{approval['stage']}"},
+            json={"decision": "approved", "reason": "Evidence reviewed and accepted"},
+        )
+        assert response.status_code == 200
+
+    final_response = client.post(
+        f"/v1/approvals/{approvals[2]['id']}/decision",
+        headers={"Idempotency-Key": "approve-legal-blocked"},
+        json={"decision": "approved", "reason": "Legal review completed"},
+    )
+    assert final_response.status_code == 409
+    assert "Critical findings" in final_response.json()["detail"]
+
+    _transition(client, finding_id, "triaged", "finding-triage")
+    acceptance = client.post(
+        f"/v1/findings/{finding_id}/accept",
+        headers={"Idempotency-Key": "finding-accept"},
+        json={
+            "residual_risk": "A temporary disparity may remain during the monitored pilot.",
+            "reason": "Legal and Responsible AI approved a time-limited monitored exception.",
+            "expires_at": (datetime.now(UTC) + timedelta(days=30)).isoformat(),
+        },
+    )
+    assert acceptance.status_code == 200
+    assert acceptance.json()["status"] == "accepted"
+
+    final_response = client.post(
+        f"/v1/approvals/{approvals[2]['id']}/decision",
+        headers={"Idempotency-Key": "approve-legal-valid"},
+        json={"decision": "approved", "reason": "Time-limited exception verified"},
+    )
+    assert final_response.status_code == 200
+    gate = client.get("/v1/ai-systems/sys-one/release-gate").json()
+    assert gate["status"] == "approved"
+    assert gate["approved_stages"] == ["responsible_ai", "hr", "legal_dpo"]
+
+
+def test_expired_risk_acceptance_reopens_and_reblocks_release(
+    client: TestClient, db: Session
+) -> None:
+    finding = _create_finding(client, key="finding-expiry")
+    finding_id = str(finding["id"])
+    _transition(client, finding_id, "triaged", "expiry-triage")
+    accepted = client.post(
+        f"/v1/findings/{finding_id}/accept",
+        headers={"Idempotency-Key": "expiry-accept"},
+        json={
+            "residual_risk": "Pilot remains human-reviewed while the control is implemented.",
+            "reason": "Short-lived exception for a monitored test window only.",
+            "expires_at": (datetime.now(UTC) + timedelta(days=1)).isoformat(),
+        },
+    )
+    assert accepted.status_code == 200
+    stored = db.get(Finding, finding_id)
+    assert stored is not None
+    stored.accepted_until = datetime.now(UTC) - timedelta(minutes=1)
+    db.commit()
+
+    gate = client.get("/v1/ai-systems/sys-one/release-gate")
+    assert gate.status_code == 200
+    assert gate.json()["status"] == "blocked"
+    assert db.get(Finding, finding_id).status == "open"  # type: ignore[union-attr]
+    events = client.get("/v1/audit-events").json()["items"]
+    assert any(item["action"] == "finding.acceptance_expired" for item in events)
+
+
+def test_remediation_task_and_retest_close_the_finding(client: TestClient) -> None:
+    finding = _create_finding(client, severity="high", key="finding-remediation")
+    finding_id = str(finding["id"])
+    _transition(client, finding_id, "triaged", "remediation-triage")
+    _transition(client, finding_id, "mitigating", "remediation-start")
+    task_response = client.post(
+        f"/v1/findings/{finding_id}/tasks",
+        headers={"Idempotency-Key": "task-create"},
+        json={
+            "title": "Remove proxy feature and retrain candidate model",
+            "description": "Ship a new model version and attach the change record.",
+            "owner_id": "developer@example.test",
+            "owner_name": "Model Developer",
+            "due_at": (datetime.now(UTC) + timedelta(days=5)).isoformat(),
+        },
+    )
+    assert task_response.status_code == 201
+    task_id = task_response.json()["id"]
+    task_list = client.get(f"/v1/remediation-tasks?finding_id={finding_id}")
+    assert task_list.status_code == 200
+    assert task_list.json()["total"] == 1
+    assert (
+        client.post(
+            f"/v1/remediation-tasks/{task_id}/status",
+            headers={"Idempotency-Key": "task-start"},
+            json={"status": "in_progress", "reason": "Implementation has started"},
+        ).status_code
+        == 200
+    )
+    completed = client.post(
+        f"/v1/remediation-tasks/{task_id}/status",
+        headers={"Idempotency-Key": "task-complete"},
+        json={
+            "status": "completed",
+            "reason": "Replacement model and peer review are complete",
+            "evidence_refs": ["model:model-one", "change:CR-104"],
+        },
+    )
+    assert completed.status_code == 200
+    assert completed.json()["completed_at"] is not None
+
+    _transition(client, finding_id, "ready_for_retest", "retest-ready")
+    retest = client.post(
+        f"/v1/findings/{finding_id}/retests",
+        headers={"Idempotency-Key": "retest-record"},
+        json={
+            "audit_run_id": "run-metrics",
+            "outcome": "resolved",
+            "notes": "The approved rerun is within threshold with adequate sample coverage.",
+        },
+    )
+    assert retest.status_code == 201
+    detail = client.get(f"/v1/findings/{finding_id}").json()
+    assert detail["status"] == "resolved"
+    assert detail["tasks"][0]["status"] == "completed"
+    assert detail["retests"][0]["outcome"] == "resolved"
+
+
+def test_approval_stage_requires_the_matching_accountable_role(client: TestClient) -> None:
+    chain = client.post(
+        "/v1/ai-systems/sys-one/approval-chain",
+        headers={"Idempotency-Key": "role-chain"},
+        json={"reason": "Submit evidence for role enforcement review"},
+    ).json()
+    responsible_ai_approval = chain["items"][0]
+    app.dependency_overrides[get_principal] = lambda: Principal(
+        user_id="hr-reviewer",
+        email="hr@example.test",
+        display_name="HR Reviewer",
+        organization_id="org-one",
+        organization_name="Northstar",
+        role=Role.HR_REVIEWER,
+    )
+    response = client.post(
+        f"/v1/approvals/{responsible_ai_approval['id']}/decision",
+        headers={"Idempotency-Key": "wrong-role-decision"},
+        json={"decision": "approved", "reason": "Attempted out-of-stage approval"},
+    )
+    assert response.status_code == 403
+    assert "cannot decide responsible_ai" in response.json()["detail"]

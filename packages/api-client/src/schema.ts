@@ -39,6 +39,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/ai-systems/{system_id}/approval-chain": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Start Approval Chain */
+        post: operations["start_approval_chain_v1_ai_systems__system_id__approval_chain_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/ai-systems/{system_id}/assessments": {
         parameters: {
             query?: never;
@@ -69,6 +86,57 @@ export interface paths {
         put?: never;
         /** Create Model Version */
         post: operations["create_model_version_v1_ai_systems__system_id__model_versions_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/ai-systems/{system_id}/release-gate": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get Release Gate */
+        get: operations["get_release_gate_v1_ai_systems__system_id__release_gate_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/approvals": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List Approvals */
+        get: operations["list_approvals_v1_approvals_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/approvals/{approval_id}/decision": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Decide Approval */
+        post: operations["decide_approval_v1_approvals__approval_id__decision_post"];
         delete?: never;
         options?: never;
         head?: never;
@@ -262,6 +330,109 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/findings": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List Findings */
+        get: operations["list_findings_v1_findings_get"];
+        put?: never;
+        /** Create Finding */
+        post: operations["create_finding_v1_findings_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/findings/{finding_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get Finding */
+        get: operations["get_finding_v1_findings__finding_id__get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/findings/{finding_id}/accept": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Accept Finding */
+        post: operations["accept_finding_v1_findings__finding_id__accept_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/findings/{finding_id}/retests": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Record Finding Retest */
+        post: operations["record_finding_retest_v1_findings__finding_id__retests_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/findings/{finding_id}/tasks": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Create Remediation Task */
+        post: operations["create_remediation_task_v1_findings__finding_id__tasks_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/findings/{finding_id}/transition": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Transition Finding */
+        post: operations["transition_finding_v1_findings__finding_id__transition_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/health": {
         parameters: {
             query?: never;
@@ -342,6 +513,40 @@ export interface paths {
         get: operations["portfolio_v1_portfolio_get"];
         put?: never;
         post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/remediation-tasks": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List Remediation Tasks */
+        get: operations["list_remediation_tasks_v1_remediation_tasks_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/remediation-tasks/{task_id}/status": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Update Remediation Task */
+        post: operations["update_remediation_task_v1_remediation_tasks__task_id__status_post"];
         delete?: never;
         options?: never;
         head?: never;
@@ -501,6 +706,89 @@ export interface components {
              * @default false
              */
             solely_automated: boolean;
+        };
+        /** ApprovalChainCreate */
+        ApprovalChainCreate: {
+            /** Reason */
+            reason: string;
+        };
+        /** ApprovalChainResponse */
+        ApprovalChainResponse: {
+            /** Ai System Id */
+            ai_system_id: string;
+            /** Chain Version */
+            chain_version: number;
+            /** Items */
+            items: components["schemas"]["ApprovalResponse"][];
+        };
+        /** ApprovalDecisionCreate */
+        ApprovalDecisionCreate: {
+            /**
+             * Decision
+             * @enum {string}
+             */
+            decision: "approved" | "rejected";
+            /** Expires At */
+            expires_at?: string | null;
+            /** Reason */
+            reason: string;
+        };
+        /** ApprovalListResponse */
+        ApprovalListResponse: {
+            /** Items */
+            items: components["schemas"]["ApprovalResponse"][];
+            /**
+             * Page
+             * @default 1
+             */
+            page: number;
+            /**
+             * Page Size
+             * @default 25
+             */
+            page_size: number;
+            /** Total */
+            total: number;
+        };
+        /** ApprovalResponse */
+        ApprovalResponse: {
+            /** Ai System Id */
+            ai_system_id: string;
+            /** Approver Id */
+            approver_id: string | null;
+            /** Approver Name */
+            approver_name: string | null;
+            /** Chain Version */
+            chain_version: number;
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at: string;
+            /** Created By */
+            created_by: string;
+            /** Decided At */
+            decided_at: string | null;
+            /**
+             * Decision
+             * @enum {string}
+             */
+            decision: "pending" | "approved" | "rejected" | "expired";
+            /** Expires At */
+            expires_at: string | null;
+            /** Id */
+            id: string;
+            /** Organization Id */
+            organization_id: string;
+            /** Reason */
+            reason: string | null;
+            /** Sequence */
+            sequence: number;
+            /**
+             * Stage
+             * @enum {string}
+             */
+            stage: "responsible_ai" | "hr" | "legal_dpo";
         };
         /** AssessmentCreate */
         AssessmentCreate: {
@@ -923,6 +1211,274 @@ export interface components {
          * @enum {string}
          */
         FieldRole: "identifier" | "feature" | "protected_attribute" | "label" | "prediction" | "decision" | "timestamp" | "metadata";
+        /** FindingCreate */
+        FindingCreate: {
+            /**
+             * Affected Groups
+             * @default []
+             */
+            affected_groups: string[];
+            /** Ai System Id */
+            ai_system_id: string;
+            /** Audit Run Id */
+            audit_run_id?: string | null;
+            /**
+             * Confidence
+             * @enum {string}
+             */
+            confidence: "high" | "medium" | "low";
+            /**
+             * Control Refs
+             * @default []
+             */
+            control_refs: string[];
+            /** Description */
+            description: string;
+            /**
+             * Due At
+             * Format: date-time
+             */
+            due_at: string;
+            /** Evidence Refs */
+            evidence_refs: string[];
+            /** Owner Id */
+            owner_id: string;
+            /** Owner Name */
+            owner_name: string;
+            /** Recommended Control */
+            recommended_control?: string | null;
+            /**
+             * Severity
+             * @enum {string}
+             */
+            severity: "critical" | "high" | "medium" | "low";
+            /** Source Metric Id */
+            source_metric_id?: string | null;
+            /** Title */
+            title: string;
+        };
+        /** FindingDetailResponse */
+        FindingDetailResponse: {
+            /** Acceptance Reason */
+            acceptance_reason: string | null;
+            /** Accepted At */
+            accepted_at: string | null;
+            /** Accepted By */
+            accepted_by: string | null;
+            /** Accepted Until */
+            accepted_until: string | null;
+            /**
+             * Affected Groups
+             * @default []
+             */
+            affected_groups: string[];
+            /** Ai System Id */
+            ai_system_id: string;
+            /** Audit Run Id */
+            audit_run_id?: string | null;
+            /**
+             * Confidence
+             * @enum {string}
+             */
+            confidence: "high" | "medium" | "low";
+            /**
+             * Control Refs
+             * @default []
+             */
+            control_refs: string[];
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at: string;
+            /** Created By */
+            created_by: string;
+            /** Description */
+            description: string;
+            /**
+             * Due At
+             * Format: date-time
+             */
+            due_at: string;
+            /** Evidence Refs */
+            evidence_refs: string[];
+            /** Id */
+            id: string;
+            /** Organization Id */
+            organization_id: string;
+            /** Owner Id */
+            owner_id: string;
+            /** Owner Name */
+            owner_name: string;
+            /** Recommended Control */
+            recommended_control?: string | null;
+            /** Residual Risk */
+            residual_risk: string | null;
+            /** Retests */
+            retests: components["schemas"]["FindingRetestResponse"][];
+            /**
+             * Severity
+             * @enum {string}
+             */
+            severity: "critical" | "high" | "medium" | "low";
+            /** Source Metric Id */
+            source_metric_id?: string | null;
+            /**
+             * Status
+             * @enum {string}
+             */
+            status: "open" | "triaged" | "mitigating" | "ready_for_retest" | "resolved" | "accepted";
+            /** Tasks */
+            tasks: components["schemas"]["RemediationTaskResponse"][];
+            /** Title */
+            title: string;
+            /**
+             * Updated At
+             * Format: date-time
+             */
+            updated_at: string;
+        };
+        /** FindingListResponse */
+        FindingListResponse: {
+            /** Items */
+            items: components["schemas"]["FindingResponse"][];
+            /**
+             * Page
+             * @default 1
+             */
+            page: number;
+            /**
+             * Page Size
+             * @default 25
+             */
+            page_size: number;
+            /** Total */
+            total: number;
+        };
+        /** FindingResponse */
+        FindingResponse: {
+            /** Acceptance Reason */
+            acceptance_reason: string | null;
+            /** Accepted At */
+            accepted_at: string | null;
+            /** Accepted By */
+            accepted_by: string | null;
+            /** Accepted Until */
+            accepted_until: string | null;
+            /**
+             * Affected Groups
+             * @default []
+             */
+            affected_groups: string[];
+            /** Ai System Id */
+            ai_system_id: string;
+            /** Audit Run Id */
+            audit_run_id?: string | null;
+            /**
+             * Confidence
+             * @enum {string}
+             */
+            confidence: "high" | "medium" | "low";
+            /**
+             * Control Refs
+             * @default []
+             */
+            control_refs: string[];
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at: string;
+            /** Created By */
+            created_by: string;
+            /** Description */
+            description: string;
+            /**
+             * Due At
+             * Format: date-time
+             */
+            due_at: string;
+            /** Evidence Refs */
+            evidence_refs: string[];
+            /** Id */
+            id: string;
+            /** Organization Id */
+            organization_id: string;
+            /** Owner Id */
+            owner_id: string;
+            /** Owner Name */
+            owner_name: string;
+            /** Recommended Control */
+            recommended_control?: string | null;
+            /** Residual Risk */
+            residual_risk: string | null;
+            /**
+             * Severity
+             * @enum {string}
+             */
+            severity: "critical" | "high" | "medium" | "low";
+            /** Source Metric Id */
+            source_metric_id?: string | null;
+            /**
+             * Status
+             * @enum {string}
+             */
+            status: "open" | "triaged" | "mitigating" | "ready_for_retest" | "resolved" | "accepted";
+            /** Title */
+            title: string;
+            /**
+             * Updated At
+             * Format: date-time
+             */
+            updated_at: string;
+        };
+        /** FindingRetestCreate */
+        FindingRetestCreate: {
+            /** Audit Run Id */
+            audit_run_id: string;
+            /** Notes */
+            notes: string;
+            /**
+             * Outcome
+             * @enum {string}
+             */
+            outcome: "resolved" | "improved" | "persisted" | "regressed";
+        };
+        /** FindingRetestResponse */
+        FindingRetestResponse: {
+            /** Audit Run Id */
+            audit_run_id: string;
+            /** Finding Id */
+            finding_id: string;
+            /** Id */
+            id: string;
+            /** Notes */
+            notes: string;
+            /** Organization Id */
+            organization_id: string;
+            /**
+             * Outcome
+             * @enum {string}
+             */
+            outcome: "resolved" | "improved" | "persisted" | "regressed";
+            /**
+             * Performed At
+             * Format: date-time
+             */
+            performed_at: string;
+            /** Performed By */
+            performed_by: string;
+        };
+        /** FindingTransition */
+        FindingTransition: {
+            /** Reason */
+            reason: string;
+            /**
+             * Status
+             * @enum {string}
+             */
+            status: "open" | "triaged" | "mitigating" | "ready_for_retest" | "resolved" | "accepted";
+        };
         /** HTTPValidationError */
         HTTPValidationError: {
             /** Detail */
@@ -1094,8 +1650,16 @@ export interface components {
         PortfolioSummary: {
             /** Active Audit Runs */
             active_audit_runs: number;
+            /** Critical Blockers */
+            critical_blockers: number;
             /** Failed Jobs */
             failed_jobs: number;
+            /** Open Findings */
+            open_findings: number;
+            /** Overdue Tasks */
+            overdue_tasks: number;
+            /** Pending Approvals */
+            pending_approvals: number;
             /** Ready Datasets */
             ready_datasets: number;
             /** Release Counts */
@@ -1104,6 +1668,141 @@ export interface components {
             };
             /** Total Systems */
             total_systems: number;
+        };
+        /** ReleaseGateBlocker */
+        ReleaseGateBlocker: {
+            /** Code */
+            code: string;
+            /** Message */
+            message: string;
+            /** Resource Id */
+            resource_id?: string | null;
+        };
+        /** ReleaseGateResponse */
+        ReleaseGateResponse: {
+            /** Ai System Id */
+            ai_system_id: string;
+            /** Approved Stages */
+            approved_stages: string[];
+            /** Blockers */
+            blockers: components["schemas"]["ReleaseGateBlocker"][];
+            /** Chain Version */
+            chain_version: number | null;
+            /**
+             * Evaluated At
+             * Format: date-time
+             */
+            evaluated_at: string;
+            /** Required Stages */
+            required_stages: string[];
+            /**
+             * Status
+             * @enum {string}
+             */
+            status: "approved" | "review_required" | "blocked";
+        };
+        /** RemediationTaskCreate */
+        RemediationTaskCreate: {
+            /** Description */
+            description?: string | null;
+            /**
+             * Due At
+             * Format: date-time
+             */
+            due_at: string;
+            /** Owner Id */
+            owner_id: string;
+            /** Owner Name */
+            owner_name: string;
+            /** Title */
+            title: string;
+        };
+        /** RemediationTaskListResponse */
+        RemediationTaskListResponse: {
+            /** Items */
+            items: components["schemas"]["RemediationTaskResponse"][];
+            /**
+             * Page
+             * @default 1
+             */
+            page: number;
+            /**
+             * Page Size
+             * @default 25
+             */
+            page_size: number;
+            /** Total */
+            total: number;
+        };
+        /** RemediationTaskResponse */
+        RemediationTaskResponse: {
+            /** Completed At */
+            completed_at: string | null;
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at: string;
+            /** Created By */
+            created_by: string;
+            /** Description */
+            description?: string | null;
+            /**
+             * Due At
+             * Format: date-time
+             */
+            due_at: string;
+            /** Evidence Refs */
+            evidence_refs: string[];
+            /** Finding Id */
+            finding_id: string;
+            /** Id */
+            id: string;
+            /** Organization Id */
+            organization_id: string;
+            /** Owner Id */
+            owner_id: string;
+            /** Owner Name */
+            owner_name: string;
+            /**
+             * Status
+             * @enum {string}
+             */
+            status: "open" | "in_progress" | "completed" | "cancelled";
+            /** Title */
+            title: string;
+            /**
+             * Updated At
+             * Format: date-time
+             */
+            updated_at: string;
+        };
+        /** RemediationTaskUpdate */
+        RemediationTaskUpdate: {
+            /**
+             * Evidence Refs
+             * @default []
+             */
+            evidence_refs: string[];
+            /** Reason */
+            reason: string;
+            /**
+             * Status
+             * @enum {string}
+             */
+            status: "open" | "in_progress" | "completed" | "cancelled";
+        };
+        /** RiskAcceptanceCreate */
+        RiskAcceptanceCreate: {
+            /**
+             * Expires At
+             * Format: date-time
+             */
+            expires_at: string;
+            /** Reason */
+            reason: string;
+            /** Residual Risk */
+            residual_risk: string;
         };
         /**
          * Role
@@ -1309,6 +2008,45 @@ export interface operations {
             };
         };
     };
+    start_approval_chain_v1_ai_systems__system_id__approval_chain_post: {
+        parameters: {
+            query?: never;
+            header?: {
+                "X-Organization-ID"?: string | null;
+                "X-Dev-User"?: string | null;
+                "Idempotency-Key"?: string | null;
+            };
+            path: {
+                system_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ApprovalChainCreate"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApprovalChainResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
     list_assessments_v1_ai_systems__system_id__assessments_get: {
         parameters: {
             query?: never;
@@ -1442,6 +2180,116 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["ModelVersionResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_release_gate_v1_ai_systems__system_id__release_gate_get: {
+        parameters: {
+            query?: never;
+            header?: {
+                "X-Organization-ID"?: string | null;
+                "X-Dev-User"?: string | null;
+            };
+            path: {
+                system_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ReleaseGateResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    list_approvals_v1_approvals_get: {
+        parameters: {
+            query?: {
+                decision?: string | null;
+                ai_system_id?: string | null;
+                page?: number;
+                page_size?: number;
+            };
+            header?: {
+                "X-Organization-ID"?: string | null;
+                "X-Dev-User"?: string | null;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApprovalListResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    decide_approval_v1_approvals__approval_id__decision_post: {
+        parameters: {
+            query?: never;
+            header?: {
+                "X-Organization-ID"?: string | null;
+                "X-Dev-User"?: string | null;
+                "Idempotency-Key"?: string | null;
+            };
+            path: {
+                approval_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ApprovalDecisionCreate"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApprovalResponse"];
                 };
             };
             /** @description Validation Error */
@@ -1850,6 +2698,272 @@ export interface operations {
             };
         };
     };
+    list_findings_v1_findings_get: {
+        parameters: {
+            query?: {
+                status?: string | null;
+                severity?: string | null;
+                ai_system_id?: string | null;
+                due_before?: string | null;
+                page?: number;
+                page_size?: number;
+            };
+            header?: {
+                "X-Organization-ID"?: string | null;
+                "X-Dev-User"?: string | null;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["FindingListResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    create_finding_v1_findings_post: {
+        parameters: {
+            query?: never;
+            header?: {
+                "X-Organization-ID"?: string | null;
+                "X-Dev-User"?: string | null;
+                "Idempotency-Key"?: string | null;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["FindingCreate"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["FindingResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_finding_v1_findings__finding_id__get: {
+        parameters: {
+            query?: never;
+            header?: {
+                "X-Organization-ID"?: string | null;
+                "X-Dev-User"?: string | null;
+            };
+            path: {
+                finding_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["FindingDetailResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    accept_finding_v1_findings__finding_id__accept_post: {
+        parameters: {
+            query?: never;
+            header?: {
+                "X-Organization-ID"?: string | null;
+                "X-Dev-User"?: string | null;
+                "Idempotency-Key"?: string | null;
+            };
+            path: {
+                finding_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["RiskAcceptanceCreate"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["FindingResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    record_finding_retest_v1_findings__finding_id__retests_post: {
+        parameters: {
+            query?: never;
+            header?: {
+                "X-Organization-ID"?: string | null;
+                "X-Dev-User"?: string | null;
+                "Idempotency-Key"?: string | null;
+            };
+            path: {
+                finding_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["FindingRetestCreate"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["FindingRetestResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    create_remediation_task_v1_findings__finding_id__tasks_post: {
+        parameters: {
+            query?: never;
+            header?: {
+                "X-Organization-ID"?: string | null;
+                "X-Dev-User"?: string | null;
+                "Idempotency-Key"?: string | null;
+            };
+            path: {
+                finding_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["RemediationTaskCreate"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RemediationTaskResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    transition_finding_v1_findings__finding_id__transition_post: {
+        parameters: {
+            query?: never;
+            header?: {
+                "X-Organization-ID"?: string | null;
+                "X-Dev-User"?: string | null;
+                "Idempotency-Key"?: string | null;
+            };
+            path: {
+                finding_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["FindingTransition"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["FindingResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
     health_v1_health_get: {
         parameters: {
             query?: never;
@@ -2029,6 +3143,84 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["PortfolioSummary"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    list_remediation_tasks_v1_remediation_tasks_get: {
+        parameters: {
+            query?: {
+                status?: string | null;
+                finding_id?: string | null;
+                due_before?: string | null;
+                overdue_only?: boolean;
+                page?: number;
+                page_size?: number;
+            };
+            header?: {
+                "X-Organization-ID"?: string | null;
+                "X-Dev-User"?: string | null;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RemediationTaskListResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    update_remediation_task_v1_remediation_tasks__task_id__status_post: {
+        parameters: {
+            query?: never;
+            header?: {
+                "X-Organization-ID"?: string | null;
+                "X-Dev-User"?: string | null;
+                "Idempotency-Key"?: string | null;
+            };
+            path: {
+                task_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["RemediationTaskUpdate"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RemediationTaskResponse"];
                 };
             };
             /** @description Validation Error */

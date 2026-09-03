@@ -1,7 +1,8 @@
 import { notFound } from "next/navigation";
 import Link from "next/link";
 import { StatusBadge } from "@fairhire/ui";
-import { getSystemDetail } from "@/lib/api";
+import { ApprovalChainControl } from "@/components/governance-actions";
+import { getReleaseGate, getSystemDetail } from "@/lib/api";
 
 export const dynamic = "force-dynamic";
 
@@ -11,8 +12,11 @@ export default async function SystemDetailPage({
   params: Promise<{ systemId: string }>;
 }) {
   const { systemId } = await params;
-  const { system, assessments, modelVersions, source } =
-    await getSystemDetail(systemId);
+  const [detail, gateResult] = await Promise.all([
+    getSystemDetail(systemId),
+    getReleaseGate(systemId),
+  ]);
+  const { system, assessments, modelVersions, source } = detail;
   if (!system) notFound();
   const blocked = system.release_status === "blocked";
   return (
@@ -47,6 +51,40 @@ export default async function SystemDetailPage({
               : "Needs confirmation"}
         </StatusBadge>
       </header>
+      {gateResult.gate && (
+        <section
+          className="release-gate-panel"
+          aria-labelledby="release-gate-heading"
+        >
+          <div>
+            <p className="eyebrow">
+              Release gate · chain{" "}
+              {gateResult.gate.chain_version ?? "not started"}
+            </p>
+            <h2 id="release-gate-heading">
+              {gateResult.gate.status.replaceAll("_", " ")}
+            </h2>
+            <p>
+              {gateResult.gate.approved_stages.length} of{" "}
+              {gateResult.gate.required_stages.length} accountable stages
+              approved.
+            </p>
+            {gateResult.gate.blockers.length > 0 && (
+              <ul>
+                {gateResult.gate.blockers.map((item) => (
+                  <li key={`${item.code}-${item.resource_id}`}>
+                    {item.message}
+                  </li>
+                ))}
+              </ul>
+            )}
+          </div>
+          <ApprovalChainControl
+            systemId={system.id}
+            disabled={gateResult.source === "fixture"}
+          />
+        </section>
+      )}
       <section className="detail-ledger">
         <h2>Decision record</h2>
         <dl>

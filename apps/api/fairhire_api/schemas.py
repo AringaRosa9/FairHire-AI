@@ -344,6 +344,162 @@ class AuditComparisonResponse(BaseModel):
     items: list[MetricComparison]
 
 
+FindingStatus = Literal["open", "triaged", "mitigating", "ready_for_retest", "resolved", "accepted"]
+FindingSeverity = Literal["critical", "high", "medium", "low"]
+
+
+class FindingCreate(BaseModel):
+    ai_system_id: str
+    audit_run_id: str | None = None
+    source_metric_id: str | None = None
+    title: Annotated[str, Field(min_length=3, max_length=240)]
+    description: Annotated[str, Field(min_length=10, max_length=8000)]
+    severity: FindingSeverity
+    confidence: Literal["high", "medium", "low"]
+    affected_groups: list[str] = []
+    evidence_refs: Annotated[list[str], Field(min_length=1)]
+    control_refs: list[str] = []
+    recommended_control: Annotated[str | None, Field(max_length=4000)] = None
+    owner_id: Annotated[str, Field(min_length=2, max_length=200)]
+    owner_name: Annotated[str, Field(min_length=2, max_length=160)]
+    due_at: datetime
+
+
+class FindingResponse(FindingCreate):
+    model_config = ConfigDict(from_attributes=True)
+    id: str
+    organization_id: str
+    status: FindingStatus
+    residual_risk: str | None
+    acceptance_reason: str | None
+    accepted_by: str | None
+    accepted_at: datetime | None
+    accepted_until: datetime | None
+    created_by: str
+    created_at: datetime
+    updated_at: datetime
+
+
+class FindingListResponse(Pagination):
+    items: list[FindingResponse]
+
+
+class FindingTransition(BaseModel):
+    status: FindingStatus
+    reason: Annotated[str, Field(min_length=5, max_length=2000)]
+
+
+class RiskAcceptanceCreate(BaseModel):
+    residual_risk: Annotated[str, Field(min_length=10, max_length=4000)]
+    reason: Annotated[str, Field(min_length=10, max_length=4000)]
+    expires_at: datetime
+
+
+class RemediationTaskCreate(BaseModel):
+    title: Annotated[str, Field(min_length=3, max_length=240)]
+    description: Annotated[str | None, Field(max_length=4000)] = None
+    owner_id: Annotated[str, Field(min_length=2, max_length=200)]
+    owner_name: Annotated[str, Field(min_length=2, max_length=160)]
+    due_at: datetime
+
+
+class RemediationTaskResponse(RemediationTaskCreate):
+    model_config = ConfigDict(from_attributes=True)
+    id: str
+    organization_id: str
+    finding_id: str
+    status: Literal["open", "in_progress", "completed", "cancelled"]
+    evidence_refs: list[str]
+    completed_at: datetime | None
+    created_by: str
+    created_at: datetime
+    updated_at: datetime
+
+
+class RemediationTaskListResponse(Pagination):
+    items: list[RemediationTaskResponse]
+
+
+class RemediationTaskUpdate(BaseModel):
+    status: Literal["open", "in_progress", "completed", "cancelled"]
+    reason: Annotated[str, Field(min_length=5, max_length=2000)]
+    evidence_refs: list[str] = []
+
+
+class FindingRetestCreate(BaseModel):
+    audit_run_id: str
+    outcome: Literal["resolved", "improved", "persisted", "regressed"]
+    notes: Annotated[str, Field(min_length=10, max_length=4000)]
+
+
+class FindingRetestResponse(FindingRetestCreate):
+    model_config = ConfigDict(from_attributes=True)
+    id: str
+    organization_id: str
+    finding_id: str
+    performed_by: str
+    performed_at: datetime
+
+
+class FindingDetailResponse(FindingResponse):
+    tasks: list[RemediationTaskResponse]
+    retests: list[FindingRetestResponse]
+
+
+class ApprovalChainCreate(BaseModel):
+    reason: Annotated[str, Field(min_length=5, max_length=2000)]
+
+
+class ApprovalDecisionCreate(BaseModel):
+    decision: Literal["approved", "rejected"]
+    reason: Annotated[str, Field(min_length=5, max_length=4000)]
+    expires_at: datetime | None = None
+
+
+class ApprovalResponse(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+    id: str
+    organization_id: str
+    ai_system_id: str
+    chain_version: int
+    stage: Literal["responsible_ai", "hr", "legal_dpo"]
+    sequence: int
+    decision: Literal["pending", "approved", "rejected", "expired"]
+    approver_id: str | None
+    approver_name: str | None
+    reason: str | None
+    decided_at: datetime | None
+    expires_at: datetime | None
+    created_by: str
+    created_at: datetime
+
+
+class ApprovalListResponse(Pagination):
+    items: list[ApprovalResponse]
+
+
+class ApprovalChainResponse(BaseModel):
+    ai_system_id: str
+    chain_version: int
+    items: list[ApprovalResponse]
+
+
+class ReleaseGateBlocker(BaseModel):
+    code: str
+    message: str
+    resource_id: str | None = None
+
+
+class ReleaseGateResponse(BaseModel):
+    ai_system_id: str
+    status: Literal["approved", "review_required", "blocked"]
+    chain_version: int | None
+    required_stages: list[str]
+    approved_stages: list[str]
+    blockers: list[ReleaseGateBlocker]
+    evaluated_at: datetime
+
+
 class BackgroundJobResponse(BaseModel):
     model_config = ConfigDict(from_attributes=True)
     id: str
@@ -392,3 +548,7 @@ class PortfolioSummary(BaseModel):
     ready_datasets: int
     active_audit_runs: int
     failed_jobs: int
+    open_findings: int
+    overdue_tasks: int
+    pending_approvals: int
+    critical_blockers: int

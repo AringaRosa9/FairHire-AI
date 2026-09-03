@@ -105,28 +105,35 @@ export default async function PortfolioPage() {
           <p className="eyebrow">Accountability</p>
           <h2 id="decision-heading">Due next</h2>
           <div className="rail-item">
-            <SeverityBadge level="high" />
+            <SeverityBadge level="critical" />
             <div>
-              <strong>Pause emotion analysis trial</strong>
-              <span>Ana Silva · due today</span>
+              <strong>
+                {summary.critical_blockers} critical release blockers
+              </strong>
+              <span>Require resolution or a valid exception</span>
             </div>
           </div>
           <div className="rail-item">
             <SeverityBadge level="high" />
             <div>
-              <strong>Confirm career-gap control</strong>
-              <span>Maya Chen · 2 days</span>
+              <strong>{summary.overdue_tasks} overdue remediation tasks</strong>
+              <span>Named owners have missed their due date</span>
             </div>
           </div>
           <div className="rail-item">
             <SeverityBadge level="medium" />
             <div>
-              <strong>Approve test strategy v3</strong>
-              <span>Elias Roth · 5 days</span>
+              <strong>
+                {summary.pending_approvals} approval decisions waiting
+              </strong>
+              <span>Responsible AI · HR · Legal / DPO</span>
             </div>
           </div>
           <Link className="text-link" href="/findings">
-            See all 8 action items →
+            See all {summary.open_findings} open action items →
+          </Link>
+          <Link className="text-link" href="/approvals">
+            Open approval center →
           </Link>
         </aside>
       </div>

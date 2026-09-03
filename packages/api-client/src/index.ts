@@ -23,6 +23,28 @@ export type AuditComparison = components["schemas"]["AuditComparisonResponse"];
 export type MetricComparison = components["schemas"]["MetricComparison"];
 export type BackgroundJob = components["schemas"]["BackgroundJobResponse"];
 export type PortfolioSummary = components["schemas"]["PortfolioSummary"];
+export type Finding = components["schemas"]["FindingResponse"];
+export type FindingDetail = components["schemas"]["FindingDetailResponse"];
+export type FindingList = components["schemas"]["FindingListResponse"];
+export type FindingCreate = components["schemas"]["FindingCreate"];
+export type FindingTransition = components["schemas"]["FindingTransition"];
+export type RiskAcceptanceCreate =
+  components["schemas"]["RiskAcceptanceCreate"];
+export type RemediationTask = components["schemas"]["RemediationTaskResponse"];
+export type RemediationTaskList =
+  components["schemas"]["RemediationTaskListResponse"];
+export type RemediationTaskCreate =
+  components["schemas"]["RemediationTaskCreate"];
+export type RemediationTaskUpdate =
+  components["schemas"]["RemediationTaskUpdate"];
+export type FindingRetest = components["schemas"]["FindingRetestResponse"];
+export type FindingRetestCreate = components["schemas"]["FindingRetestCreate"];
+export type Approval = components["schemas"]["ApprovalResponse"];
+export type ApprovalList = components["schemas"]["ApprovalListResponse"];
+export type ApprovalChain = components["schemas"]["ApprovalChainResponse"];
+export type ApprovalDecisionCreate =
+  components["schemas"]["ApprovalDecisionCreate"];
+export type ReleaseGate = components["schemas"]["ReleaseGateResponse"];
 
 export type ClientOptions = {
   baseUrl: string;
@@ -162,5 +184,124 @@ export function createApiClient({
         `/audit-runs/${runId}/comparison${baselineRunId ? `?baseline_run_id=${encodeURIComponent(baselineRunId)}` : ""}`,
       ),
     getJob: (jobId: string) => request<BackgroundJob>(`/jobs/${jobId}`),
+    listFindings: (filters?: {
+      status?: string;
+      severity?: string;
+      aiSystemId?: string;
+    }) => {
+      const query = new URLSearchParams();
+      if (filters?.status) query.set("status", filters.status);
+      if (filters?.severity) query.set("severity", filters.severity);
+      if (filters?.aiSystemId) query.set("ai_system_id", filters.aiSystemId);
+      return request<FindingList>(
+        `/findings${query.size ? `?${query.toString()}` : ""}`,
+      );
+    },
+    getFinding: (findingId: string) =>
+      request<FindingDetail>(`/findings/${findingId}`),
+    createFinding: (payload: FindingCreate, idempotencyKey: string) =>
+      write<Finding>("/findings", "POST", payload, idempotencyKey),
+    transitionFinding: (
+      findingId: string,
+      payload: FindingTransition,
+      idempotencyKey: string,
+    ) =>
+      write<Finding>(
+        `/findings/${findingId}/transition`,
+        "POST",
+        payload,
+        idempotencyKey,
+      ),
+    acceptFinding: (
+      findingId: string,
+      payload: RiskAcceptanceCreate,
+      idempotencyKey: string,
+    ) =>
+      write<Finding>(
+        `/findings/${findingId}/accept`,
+        "POST",
+        payload,
+        idempotencyKey,
+      ),
+    createRemediationTask: (
+      findingId: string,
+      payload: RemediationTaskCreate,
+      idempotencyKey: string,
+    ) =>
+      write<RemediationTask>(
+        `/findings/${findingId}/tasks`,
+        "POST",
+        payload,
+        idempotencyKey,
+      ),
+    listRemediationTasks: (filters?: {
+      status?: string;
+      findingId?: string;
+      dueBefore?: string;
+      overdueOnly?: boolean;
+    }) => {
+      const query = new URLSearchParams();
+      if (filters?.status) query.set("status", filters.status);
+      if (filters?.findingId) query.set("finding_id", filters.findingId);
+      if (filters?.dueBefore) query.set("due_before", filters.dueBefore);
+      if (filters?.overdueOnly) query.set("overdue_only", "true");
+      return request<RemediationTaskList>(
+        `/remediation-tasks${query.size ? `?${query.toString()}` : ""}`,
+      );
+    },
+    updateRemediationTask: (
+      taskId: string,
+      payload: RemediationTaskUpdate,
+      idempotencyKey: string,
+    ) =>
+      write<RemediationTask>(
+        `/remediation-tasks/${taskId}/status`,
+        "POST",
+        payload,
+        idempotencyKey,
+      ),
+    recordFindingRetest: (
+      findingId: string,
+      payload: FindingRetestCreate,
+      idempotencyKey: string,
+    ) =>
+      write<FindingRetest>(
+        `/findings/${findingId}/retests`,
+        "POST",
+        payload,
+        idempotencyKey,
+      ),
+    startApprovalChain: (
+      systemId: string,
+      reason: string,
+      idempotencyKey: string,
+    ) =>
+      write<ApprovalChain>(
+        `/ai-systems/${systemId}/approval-chain`,
+        "POST",
+        { reason },
+        idempotencyKey,
+      ),
+    listApprovals: (filters?: { decision?: string; aiSystemId?: string }) => {
+      const query = new URLSearchParams();
+      if (filters?.decision) query.set("decision", filters.decision);
+      if (filters?.aiSystemId) query.set("ai_system_id", filters.aiSystemId);
+      return request<ApprovalList>(
+        `/approvals${query.size ? `?${query.toString()}` : ""}`,
+      );
+    },
+    decideApproval: (
+      approvalId: string,
+      payload: ApprovalDecisionCreate,
+      idempotencyKey: string,
+    ) =>
+      write<Approval>(
+        `/approvals/${approvalId}/decision`,
+        "POST",
+        payload,
+        idempotencyKey,
+      ),
+    getReleaseGate: (systemId: string) =>
+      request<ReleaseGate>(`/ai-systems/${systemId}/release-gate`),
   };
 }

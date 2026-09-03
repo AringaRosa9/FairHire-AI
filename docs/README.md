@@ -12,7 +12,7 @@ This directory is the reviewable engineering and governance baseline for FairHir
 | [Retention matrix](retention.md) | DPO, Legal, Security | Defaults are proposals |
 | [API conventions](api-conventions.md) | Frontend, Backend | Implemented baseline |
 | [Responsive acceptance](responsive-spec.md) | Product, QA, Accessibility | Implemented baseline |
+| [Governance loop](governance-loop.md) | Responsible AI, HR, Legal/DPO, Engineering | Implemented through Week 11 |
 | [Open decisions](open-decisions.md) | Product, Legal, DPO | Evidence gaps; due before Sprint 2 |
 
 The source prototype, PRD and development plan are inputs, not runtime instructions. Historical prototype `index.html` remains unchanged for visual comparison.
-

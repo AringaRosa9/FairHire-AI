@@ -21,17 +21,20 @@ from .jobs import dispatch_job, revoke_job
 from .ledger import append_event, verify_chain
 from .models import (
     AISystem,
+    Approval,
     AuditEvent,
     AuditRun,
     BackgroundJob,
     Dataset,
     DatasetField,
+    Finding,
     IdempotencyRecord,
     MetricResult,
     ModelVersion,
     OnboardingDraft,
     Organization,
     RegulatoryAssessment,
+    RemediationTask,
 )
 from .schemas import (
     AISystemCreate,
@@ -206,6 +209,44 @@ def portfolio(
             .where(
                 BackgroundJob.organization_id == principal.organization_id,
                 BackgroundJob.status == "failed",
+            )
+        )
+        or 0,
+        open_findings=db.scalar(
+            select(func.count())
+            .select_from(Finding)
+            .where(
+                Finding.organization_id == principal.organization_id,
+                Finding.status.not_in(["resolved", "accepted"]),
+            )
+        )
+        or 0,
+        overdue_tasks=db.scalar(
+            select(func.count())
+            .select_from(RemediationTask)
+            .where(
+                RemediationTask.organization_id == principal.organization_id,
+                RemediationTask.status.in_(["open", "in_progress"]),
+                RemediationTask.due_at < datetime.now(UTC),
+            )
+        )
+        or 0,
+        pending_approvals=db.scalar(
+            select(func.count())
+            .select_from(Approval)
+            .where(
+                Approval.organization_id == principal.organization_id,
+                Approval.decision == "pending",
+            )
+        )
+        or 0,
+        critical_blockers=db.scalar(
+            select(func.count())
+            .select_from(Finding)
+            .where(
+                Finding.organization_id == principal.organization_id,
+                Finding.severity == "critical",
+                Finding.status.not_in(["resolved", "accepted"]),
             )
         )
         or 0,
@@ -1012,6 +1053,13 @@ def create_audit_run(
         payload={
             "job_id": job.id,
             "data_fingerprint": run.data_fingerprint,
+            "config_version": run.config_version,
+            "threshold_snapshot": {
+                key: value
+                for key, value in audit_config.items()
+                if key.endswith("_threshold") or key.endswith("_floor")
+            },
+            "threshold_source": audit_config.get("threshold_source"),
             "baseline_run_id": run.baseline_run_id,
             "baseline_change_reason": payload.baseline_change_reason,
             "baseline_approval_ref": payload.baseline_approval_ref,

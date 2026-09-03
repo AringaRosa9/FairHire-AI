@@ -16,6 +16,8 @@ const mainLinks = [
     icon: "findings" as const,
     count: "8",
   },
+  { href: "/approvals", label: "Approvals", icon: "checks" as const },
+  { href: "/tasks", label: "Due tasks", icon: "findings" as const },
   { href: "/reports", label: "Reports", icon: "reports" as const },
 ] as const;
 

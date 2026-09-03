@@ -51,3 +51,40 @@ test("first audit restores a real registration draft", async ({ page }) => {
     ),
   ).toBe(true);
 });
+
+test("governance register exposes traceability and the release approval chain", async ({
+  page,
+}) => {
+  await page.goto("/findings");
+  await expect(
+    page.getByRole("heading", { name: "Problems that need someone to act" }),
+  ).toBeVisible();
+  await expect(
+    page.getByText("Control mapping", { exact: true }).first(),
+  ).toHaveCount(0);
+  await page
+    .getByRole("link", { name: "Career gaps may reduce selection for women" })
+    .click();
+  await expect(
+    page.getByText("Control mapping", { exact: true }),
+  ).toBeVisible();
+  await expect(page.getByText("POL-FR-02 §4.2")).toBeVisible();
+
+  await page.goto("/approvals");
+  await expect(
+    page.getByRole("heading", { name: "Release approval center" }),
+  ).toBeVisible();
+  await expect(page.getByText("Responsible AI", { exact: true })).toBeVisible();
+  await expect(page.getByText("Legal / DPO", { exact: true })).toBeVisible();
+});
+
+test("due-task queue keeps completion evidence next to ownership", async ({
+  page,
+}) => {
+  await page.goto("/tasks");
+  await expect(
+    page.getByRole("heading", { name: "Work due before release" }),
+  ).toBeVisible();
+  await expect(page.getByText("Jon Bell", { exact: true })).toBeVisible();
+  await expect(page.getByText("Overdue", { exact: true })).toBeVisible();
+});
