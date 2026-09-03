@@ -1,6 +1,6 @@
 # FairHire AI
 
-Recruitment AI assurance and evidence workspace. This repository contains the engineering foundation and first-registration milestone through Week 5 described in `DEVELOPMENT_PLAN.md`.
+Recruitment AI assurance and evidence workspace. This repository contains the engineering foundation, first-registration flow, and data-quality/fairness audit milestone through Week 7 described in `DEVELOPMENT_PLAN.md`.
 
 ## What is included
 
@@ -10,6 +10,10 @@ Recruitment AI assurance and evidence workspace. This repository contains the en
 - PostgreSQL schema, Alembic migrations and forced row-level security policies across tenant data.
 - Direct CSV/Parquet/JSONL uploads to S3-compatible MinIO, checksum-bound URLs, scanner attestation, schema confirmation and field mapping.
 - Celery worker plus Redis-backed job dispatch, status, retry and cancellation state.
+- Deterministic binary-classification audits for missingness, duplicates, outliers, sample/group/time coverage, leakage and train/test overlap.
+- Selection, demographic parity, TPR/FPR, equal opportunity/equalized odds, precision, calibration and error metrics with Wilson/bootstrap uncertainty.
+- Privacy-floor count suppression, configurable minimum samples, threshold provenance and explicit `insufficient_evidence` outcomes.
+- Responsive Summary, Group differences and Data quality workbench pages backed by a versioned metric ledger API.
 - Locally persisted and server-synced onboarding drafts with validation and recovery.
 - Versioned binary-classification schema, OpenAPI contract and generated TypeScript types.
 - Unit, contract, PostgreSQL RLS, API-to-MinIO integration and Playwright regression tests.

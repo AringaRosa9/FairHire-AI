@@ -200,3 +200,21 @@ def test_pickle_upload_is_rejected_with_safe_alternative(client: TestClient) -> 
     )
     assert response.status_code == 422
     assert "prediction outputs" in response.json()["detail"]
+
+
+def test_metric_results_include_uncertainty_counts_and_threshold_provenance(
+    client: TestClient,
+) -> None:
+    response = client.get("/v1/audit-runs/run-metrics/metrics")
+    assert response.status_code == 200
+    payload = response.json()
+    assert payload["status_counts"] == {"review_required": 1}
+    metric = payload["items"][0]
+    assert metric["lower_bound"] == 0.69
+    assert metric["raw_counts"]["comparison"]["n"] == 250
+    assert metric["threshold_source"]["legal_determination"] is False
+    assert metric["calculation_version"] == "fairhire-binary-audit@1.0.0"
+
+
+def test_metric_results_are_scoped_to_the_audit_run_tenant(client: TestClient) -> None:
+    assert client.get("/v1/audit-runs/run-other/metrics").status_code == 404

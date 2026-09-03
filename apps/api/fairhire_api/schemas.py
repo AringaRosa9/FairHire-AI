@@ -268,6 +268,37 @@ class AuditRunResponse(BaseModel):
     completed_at: datetime | None
 
 
+class MetricResultResponse(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+    id: str
+    audit_run_id: str
+    category: Literal["data_quality", "fairness"]
+    metric_key: str
+    protected_attribute: str | None
+    reference_group: str | None
+    comparison_group: str | None
+    value: float | None
+    lower_bound: float | None
+    upper_bound: float | None
+    status: Literal["pass", "review_required", "insufficient_evidence"]
+    threshold: float | None
+    threshold_operator: str | None
+    threshold_source: dict[str, object]
+    raw_counts: dict[str, object]
+    method: str
+    calculation_version: str
+    details: dict[str, object]
+    created_at: datetime
+
+
+class AuditMetricSummary(BaseModel):
+    audit_run_id: str
+    calculation_version: str | None
+    status_counts: dict[str, int]
+    evidence_gaps: list[str]
+    items: list[MetricResultResponse]
+
+
 class BackgroundJobResponse(BaseModel):
     model_config = ConfigDict(from_attributes=True)
     id: str

@@ -194,6 +194,39 @@ class AuditRun(Base):
     completed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
 
 
+class MetricResult(Base):
+    __tablename__ = "metric_results"
+    __table_args__ = (
+        UniqueConstraint(
+            "organization_id",
+            "audit_run_id",
+            "metric_key",
+            "protected_attribute",
+            "comparison_group",
+        ),
+    )
+    id: Mapped[str] = mapped_column(String(36), primary_key=True)
+    organization_id: Mapped[str] = mapped_column(ForeignKey("organizations.id"), index=True)
+    audit_run_id: Mapped[str] = mapped_column(ForeignKey("audit_runs.id"), index=True)
+    category: Mapped[str] = mapped_column(String(32), nullable=False)
+    metric_key: Mapped[str] = mapped_column(String(80), nullable=False)
+    protected_attribute: Mapped[str | None] = mapped_column(String(200))
+    reference_group: Mapped[str | None] = mapped_column(String(300))
+    comparison_group: Mapped[str | None] = mapped_column(String(300))
+    value: Mapped[float | None] = mapped_column(Float)
+    lower_bound: Mapped[float | None] = mapped_column(Float)
+    upper_bound: Mapped[float | None] = mapped_column(Float)
+    status: Mapped[str] = mapped_column(String(32), nullable=False)
+    threshold: Mapped[float | None] = mapped_column(Float)
+    threshold_operator: Mapped[str | None] = mapped_column(String(16))
+    threshold_source: Mapped[dict[str, object]] = mapped_column(JSON, nullable=False, default=dict)
+    raw_counts: Mapped[dict[str, object]] = mapped_column(JSON, nullable=False, default=dict)
+    method: Mapped[str] = mapped_column(String(80), nullable=False)
+    calculation_version: Mapped[str] = mapped_column(String(100), nullable=False)
+    details: Mapped[dict[str, object]] = mapped_column(JSON, nullable=False, default=dict)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utc_now)
+
+
 class BackgroundJob(Base):
     __tablename__ = "background_jobs"
     id: Mapped[str] = mapped_column(String(36), primary_key=True)

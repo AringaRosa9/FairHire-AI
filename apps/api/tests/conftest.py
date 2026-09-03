@@ -9,7 +9,7 @@ from sqlalchemy.pool import StaticPool
 
 from fairhire_api.db import Base, get_db
 from fairhire_api.main import app
-from fairhire_api.models import AISystem, Organization
+from fairhire_api.models import AISystem, AuditRun, MetricResult, Organization
 from fairhire_api.security import Principal, get_principal
 
 
@@ -53,6 +53,44 @@ def db() -> Generator[Session, None, None]:
                     jurisdictions=["EU"],
                     owner_name="Other User",
                     assessment_version=1,
+                ),
+                AuditRun(
+                    id="run-metrics",
+                    organization_id="org-one",
+                    ai_system_id="sys-one",
+                    model_version_id="model-one",
+                    dataset_id="dataset-one",
+                    policy_pack_version="eu-core+de@2026.09",
+                    config_snapshot={"random_seed": 42},
+                    data_fingerprint="f" * 64,
+                    status="succeeded",
+                    job_id="job-metrics",
+                    submitted_by="user-one",
+                ),
+                MetricResult(
+                    id="metric-one",
+                    organization_id="org-one",
+                    audit_run_id="run-metrics",
+                    category="fairness",
+                    metric_key="demographic_parity_ratio",
+                    protected_attribute="gender",
+                    reference_group="women",
+                    comparison_group="men",
+                    value=0.78,
+                    lower_bound=0.69,
+                    upper_bound=0.88,
+                    status="review_required",
+                    threshold=0.8,
+                    threshold_operator=">=",
+                    threshold_source={
+                        "source_type": "approved_test_strategy",
+                        "source_id": "strategy-eu-binary-v1",
+                        "legal_determination": False,
+                    },
+                    raw_counts={"comparison": {"n": 250, "selected": 98}},
+                    method="stratified_bootstrap_percentile",
+                    calculation_version="fairhire-binary-audit@1.0.0",
+                    details={"bootstrap_iterations": 1000, "random_seed": 42},
                 ),
             ]
         )

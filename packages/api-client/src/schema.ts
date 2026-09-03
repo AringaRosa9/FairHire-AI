@@ -160,6 +160,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/audit-runs/{run_id}/metrics": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get Audit Metrics */
+        get: operations["get_audit_metrics_v1_audit_runs__run_id__metrics_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/datasets/initiate-upload": {
         parameters: {
             query?: never;
@@ -582,6 +599,21 @@ export interface components {
             /** Resource Type */
             resource_type: string;
         };
+        /** AuditMetricSummary */
+        AuditMetricSummary: {
+            /** Audit Run Id */
+            audit_run_id: string;
+            /** Calculation Version */
+            calculation_version: string | null;
+            /** Evidence Gaps */
+            evidence_gaps: string[];
+            /** Items */
+            items: components["schemas"]["MetricResultResponse"][];
+            /** Status Counts */
+            status_counts: {
+                [key: string]: number;
+            };
+        };
         /** AuditRunCreate */
         AuditRunCreate: {
             /** Ai System Id */
@@ -863,6 +895,62 @@ export interface components {
             checked_events: number;
             /** Valid */
             valid: boolean;
+        };
+        /** MetricResultResponse */
+        MetricResultResponse: {
+            /** Audit Run Id */
+            audit_run_id: string;
+            /** Calculation Version */
+            calculation_version: string;
+            /**
+             * Category
+             * @enum {string}
+             */
+            category: "data_quality" | "fairness";
+            /** Comparison Group */
+            comparison_group: string | null;
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at: string;
+            /** Details */
+            details: {
+                [key: string]: unknown;
+            };
+            /** Id */
+            id: string;
+            /** Lower Bound */
+            lower_bound: number | null;
+            /** Method */
+            method: string;
+            /** Metric Key */
+            metric_key: string;
+            /** Protected Attribute */
+            protected_attribute: string | null;
+            /** Raw Counts */
+            raw_counts: {
+                [key: string]: unknown;
+            };
+            /** Reference Group */
+            reference_group: string | null;
+            /**
+             * Status
+             * @enum {string}
+             */
+            status: "pass" | "review_required" | "insufficient_evidence";
+            /** Threshold */
+            threshold: number | null;
+            /** Threshold Operator */
+            threshold_operator: string | null;
+            /** Threshold Source */
+            threshold_source: {
+                [key: string]: unknown;
+            };
+            /** Upper Bound */
+            upper_bound: number | null;
+            /** Value */
+            value: number | null;
         };
         /** ModelVersionCreate */
         ModelVersionCreate: {
@@ -1460,6 +1548,42 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["AuditRunResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_audit_metrics_v1_audit_runs__run_id__metrics_get: {
+        parameters: {
+            query?: {
+                category?: ("data_quality" | "fairness") | null;
+            };
+            header?: {
+                "X-Organization-ID"?: string | null;
+                "X-Dev-User"?: string | null;
+            };
+            path: {
+                run_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AuditMetricSummary"];
                 };
             };
             /** @description Validation Error */

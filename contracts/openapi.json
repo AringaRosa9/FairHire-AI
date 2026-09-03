@@ -653,6 +653,55 @@
         "title": "AuditEventResponse",
         "type": "object"
       },
+      "AuditMetricSummary": {
+        "properties": {
+          "audit_run_id": {
+            "title": "Audit Run Id",
+            "type": "string"
+          },
+          "calculation_version": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Calculation Version"
+          },
+          "evidence_gaps": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Evidence Gaps",
+            "type": "array"
+          },
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/MetricResultResponse"
+            },
+            "title": "Items",
+            "type": "array"
+          },
+          "status_counts": {
+            "additionalProperties": {
+              "type": "integer"
+            },
+            "title": "Status Counts",
+            "type": "object"
+          }
+        },
+        "required": [
+          "audit_run_id",
+          "calculation_version",
+          "status_counts",
+          "evidence_gaps",
+          "items"
+        ],
+        "title": "AuditMetricSummary",
+        "type": "object"
+      },
       "AuditRunCreate": {
         "properties": {
           "ai_system_id": {
@@ -1464,6 +1513,178 @@
           "checked_events"
         ],
         "title": "LedgerVerificationResponse",
+        "type": "object"
+      },
+      "MetricResultResponse": {
+        "properties": {
+          "audit_run_id": {
+            "title": "Audit Run Id",
+            "type": "string"
+          },
+          "calculation_version": {
+            "title": "Calculation Version",
+            "type": "string"
+          },
+          "category": {
+            "enum": [
+              "data_quality",
+              "fairness"
+            ],
+            "title": "Category",
+            "type": "string"
+          },
+          "comparison_group": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Comparison Group"
+          },
+          "created_at": {
+            "format": "date-time",
+            "title": "Created At",
+            "type": "string"
+          },
+          "details": {
+            "additionalProperties": true,
+            "title": "Details",
+            "type": "object"
+          },
+          "id": {
+            "title": "Id",
+            "type": "string"
+          },
+          "lower_bound": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Lower Bound"
+          },
+          "method": {
+            "title": "Method",
+            "type": "string"
+          },
+          "metric_key": {
+            "title": "Metric Key",
+            "type": "string"
+          },
+          "protected_attribute": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Protected Attribute"
+          },
+          "raw_counts": {
+            "additionalProperties": true,
+            "title": "Raw Counts",
+            "type": "object"
+          },
+          "reference_group": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Reference Group"
+          },
+          "status": {
+            "enum": [
+              "pass",
+              "review_required",
+              "insufficient_evidence"
+            ],
+            "title": "Status",
+            "type": "string"
+          },
+          "threshold": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Threshold"
+          },
+          "threshold_operator": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Threshold Operator"
+          },
+          "threshold_source": {
+            "additionalProperties": true,
+            "title": "Threshold Source",
+            "type": "object"
+          },
+          "upper_bound": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Upper Bound"
+          },
+          "value": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Value"
+          }
+        },
+        "required": [
+          "id",
+          "audit_run_id",
+          "category",
+          "metric_key",
+          "protected_attribute",
+          "reference_group",
+          "comparison_group",
+          "value",
+          "lower_bound",
+          "upper_bound",
+          "status",
+          "threshold",
+          "threshold_operator",
+          "threshold_source",
+          "raw_counts",
+          "method",
+          "calculation_version",
+          "details",
+          "created_at"
+        ],
+        "title": "MetricResultResponse",
         "type": "object"
       },
       "ModelVersionCreate": {
@@ -2961,6 +3182,100 @@
           }
         },
         "summary": "Cancel Audit Run",
+        "tags": [
+          "audits"
+        ]
+      }
+    },
+    "/v1/audit-runs/{run_id}/metrics": {
+      "get": {
+        "operationId": "get_audit_metrics_v1_audit_runs__run_id__metrics_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "run_id",
+            "required": true,
+            "schema": {
+              "title": "Run Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "category",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "enum": [
+                    "data_quality",
+                    "fairness"
+                  ],
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Category"
+            }
+          },
+          {
+            "in": "header",
+            "name": "X-Organization-ID",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Organization-Id"
+            }
+          },
+          {
+            "in": "header",
+            "name": "X-Dev-User",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Dev-User"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AuditMetricSummary"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Get Audit Metrics",
         "tags": [
           "audits"
         ]

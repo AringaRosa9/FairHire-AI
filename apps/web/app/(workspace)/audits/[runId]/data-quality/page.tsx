@@ -1,10 +1,10 @@
 import { AuditWorkbench } from "@/components/audit-workbench";
 
-export default async function AuditRunSummaryPage({
+export default async function AuditDataQualityPage({
   params,
 }: {
   params: Promise<{ runId: string }>;
 }) {
   const { runId } = await params;
-  return <AuditWorkbench runId={runId} view="summary" />;
+  return <AuditWorkbench runId={runId} view="data-quality" />;
 }

@@ -1005,6 +1005,239 @@ textarea {
   font-size: 0.75rem;
 }
 
+.audit-workbench {
+  max-width: 84rem;
+  margin: 0 auto;
+}
+.audit-header {
+  margin-bottom: 0;
+}
+.workbench-tabs {
+  display: flex;
+  gap: clamp(1.25rem, 4vw, 3rem);
+  margin-bottom: clamp(2.5rem, 5vw, 4.5rem);
+  border-bottom: 1px solid var(--color-ink-300);
+}
+.workbench-tabs a {
+  position: relative;
+  min-height: 48px;
+  display: grid;
+  align-items: center;
+  color: var(--color-ink-600);
+  font-size: 0.78rem;
+  font-weight: 750;
+  text-decoration: none;
+}
+.workbench-tabs a[aria-current="page"] {
+  color: var(--color-green-900);
+}
+.workbench-tabs a[aria-current="page"]::after {
+  position: absolute;
+  right: 0;
+  bottom: -1px;
+  left: 0;
+  height: 3px;
+  background: var(--color-green-800);
+  content: "";
+}
+.audit-scoreline {
+  display: grid;
+  grid-template-columns: 1.2fr 1.2fr 1fr 1fr;
+  border-block: 1px solid var(--color-ink-300);
+}
+.audit-scoreline > div {
+  min-width: 0;
+  padding: clamp(1.25rem, 3vw, 2.25rem);
+  border-right: 1px solid var(--color-ink-200);
+}
+.audit-scoreline > div:first-child {
+  padding-left: 0;
+}
+.audit-scoreline > div:last-child {
+  border-right: 0;
+}
+.audit-scoreline span,
+.audit-scoreline small,
+.audit-scoreline strong {
+  display: block;
+}
+.audit-scoreline span {
+  color: var(--color-ink-600);
+  font-size: 0.69rem;
+  font-weight: 750;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+.audit-scoreline strong {
+  margin: 0.35rem 0 0.1rem;
+  font-family: var(--font-editorial);
+  font-size: clamp(2.3rem, 5vw, 4.5rem);
+  font-weight: 500;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: -0.05em;
+  line-height: 0.95;
+}
+.audit-scoreline small {
+  color: var(--color-ink-600);
+  font-size: 0.7rem;
+}
+.evidence-strip {
+  display: grid;
+  grid-template-columns: 1fr 1.3fr 0.65fr 2fr;
+  margin-top: 1rem;
+  padding: 1rem 0;
+  background: var(--color-paper-deep);
+}
+.evidence-strip > div {
+  min-width: 0;
+  padding: 0 1rem;
+  border-right: 1px solid var(--color-ink-200);
+}
+.evidence-strip > div:last-child {
+  border: 0;
+}
+.evidence-strip span,
+.evidence-strip strong {
+  display: block;
+}
+.evidence-strip span {
+  margin-bottom: 0.2rem;
+  color: var(--color-ink-600);
+  font-size: 0.65rem;
+}
+.evidence-strip strong {
+  overflow-wrap: anywhere;
+  font-size: 0.72rem;
+  font-variant-numeric: tabular-nums;
+}
+.audit-section {
+  margin-top: clamp(3rem, 7vw, 6rem);
+}
+.section-heading {
+  display: grid;
+  grid-template-columns: minmax(16rem, 0.85fr) minmax(20rem, 1.15fr);
+  align-items: end;
+  gap: clamp(2rem, 7vw, 7rem);
+  margin-bottom: 1.75rem;
+}
+.section-heading h2,
+.evidence-gaps h2,
+.audit-empty h2 {
+  margin: 0.35rem 0 0;
+  font-family: var(--font-editorial);
+  font-size: clamp(1.65rem, 3.4vw, 2.7rem);
+  font-weight: 500;
+  letter-spacing: -0.035em;
+  line-height: 1.05;
+}
+.section-heading > p {
+  max-width: 58ch;
+  margin: 0;
+  color: var(--color-ink-700);
+  font-size: 0.84rem;
+}
+.metric-ledger {
+  overflow-x: auto;
+  border-top: 1px solid var(--color-ink-400);
+}
+.metric-ledger table {
+  width: 100%;
+  min-width: 960px;
+  border-collapse: collapse;
+}
+.metric-ledger th,
+.metric-ledger td {
+  padding: 1rem 1.1rem;
+  border-bottom: 1px solid var(--color-ink-200);
+  text-align: left;
+  vertical-align: middle;
+}
+.metric-ledger thead th {
+  color: var(--color-ink-600);
+  font-size: 0.65rem;
+  font-weight: 800;
+  letter-spacing: 0.09em;
+  text-transform: uppercase;
+}
+.metric-ledger th:first-child,
+.metric-ledger td:first-child {
+  padding-left: 0;
+}
+.metric-ledger tbody th {
+  min-width: 15rem;
+  font-size: 0.83rem;
+}
+.metric-ledger small {
+  display: block;
+  margin-top: 0.2rem;
+  color: var(--color-ink-600);
+  font-size: 0.67rem;
+  font-weight: 500;
+}
+.metric-number {
+  font-weight: 750;
+  font-variant-numeric: tabular-nums;
+}
+.metric-number.muted {
+  color: var(--color-ink-700);
+  font-size: 0.78rem;
+}
+.metric-trace {
+  width: 10rem;
+  color: var(--color-ink-700);
+  font-size: 0.7rem;
+}
+.metric-trace summary {
+  min-height: 32px;
+  display: flex;
+  align-items: center;
+  color: var(--color-green-800);
+  font-weight: 750;
+  text-decoration: underline;
+  text-underline-offset: 0.2rem;
+  cursor: pointer;
+}
+.metric-trace span {
+  display: block;
+  max-height: 8rem;
+  margin-top: 0.35rem;
+  overflow: auto;
+  overflow-wrap: anywhere;
+  font-variant-numeric: tabular-nums;
+}
+.audit-empty {
+  padding: clamp(3rem, 7vw, 6rem) 0;
+  border-block: 1px solid var(--color-ink-200);
+}
+.audit-empty p:last-child {
+  max-width: 58ch;
+  color: var(--color-ink-600);
+}
+.evidence-gaps {
+  display: grid;
+  grid-template-columns: minmax(18rem, 0.8fr) minmax(20rem, 1.2fr);
+  gap: clamp(2rem, 8vw, 8rem);
+  margin-top: clamp(3rem, 8vw, 7rem);
+  padding: clamp(2rem, 5vw, 4rem);
+  background: var(--color-amber-100);
+  color: var(--color-amber-800);
+}
+.evidence-gaps .eyebrow {
+  color: var(--color-amber-800);
+}
+.evidence-gaps ul {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.evidence-gaps li {
+  padding: 0.75rem 0;
+  border-bottom: 1px solid
+    color-mix(in oklch, var(--color-amber-800) 22%, transparent);
+  font-size: 0.8rem;
+  text-transform: capitalize;
+}
+
 @media (max-width: 1120px) {
   :root {
     --sidebar-width: 86px;
@@ -1046,6 +1279,34 @@ textarea {
 @media (max-width: 800px) {
   .app-shell {
     display: block;
+  }
+  .audit-scoreline {
+    grid-template-columns: 1fr 1fr;
+  }
+  .audit-scoreline > div,
+  .audit-scoreline > div:first-child {
+    padding: 1.25rem 1rem;
+    border-bottom: 1px solid var(--color-ink-200);
+  }
+  .audit-scoreline > div:nth-child(even) {
+    border-right: 0;
+  }
+  .evidence-strip,
+  .section-heading,
+  .evidence-gaps {
+    grid-template-columns: 1fr;
+  }
+  .evidence-strip > div {
+    padding-block: 0.65rem;
+    border-right: 0;
+    border-bottom: 1px solid var(--color-ink-200);
+  }
+  .workbench-tabs {
+    gap: 1.25rem;
+    overflow-x: auto;
+  }
+  .workbench-tabs a {
+    flex: 0 0 auto;
   }
   .sidebar {
     position: fixed;

@@ -38,7 +38,7 @@ def test_rls_rejects_cross_tenant_insert() -> None:
 
 
 @pytest.mark.skipif(not APP_DATABASE_URL, reason="requires a migrated PostgreSQL app-role database")
-def test_week_three_to_five_tables_all_force_tenant_rls() -> None:
+def test_tenant_tables_through_week_seven_force_rls() -> None:
     assert APP_DATABASE_URL is not None
     expected = {
         "regulatory_assessments",
@@ -48,6 +48,7 @@ def test_week_three_to_five_tables_all_force_tenant_rls() -> None:
         "dataset_fields",
         "audit_runs",
         "background_jobs",
+        "metric_results",
     }
     with psycopg.connect(APP_DATABASE_URL) as connection, connection.cursor() as cursor:
         cursor.execute(

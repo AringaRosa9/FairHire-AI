@@ -17,6 +17,8 @@ export type Dataset = components["schemas"]["DatasetResponse"];
 export type FieldMappingsCreate = components["schemas"]["FieldMappingsCreate"];
 export type AuditRunCreate = components["schemas"]["AuditRunCreate"];
 export type AuditRun = components["schemas"]["AuditRunResponse"];
+export type AuditMetricSummary = components["schemas"]["AuditMetricSummary"];
+export type MetricResult = components["schemas"]["MetricResultResponse"];
 export type BackgroundJob = components["schemas"]["BackgroundJobResponse"];
 export type PortfolioSummary = components["schemas"]["PortfolioSummary"];
 
@@ -140,6 +142,10 @@ export function createApiClient({
     createAuditRun: (payload: AuditRunCreate, idempotencyKey: string) =>
       write<AuditRun>("/audit-runs", "POST", payload, idempotencyKey),
     getAuditRun: (runId: string) => request<AuditRun>(`/audit-runs/${runId}`),
+    getAuditMetrics: (runId: string, category?: "data_quality" | "fairness") =>
+      request<AuditMetricSummary>(
+        `/audit-runs/${runId}/metrics${category ? `?category=${category}` : ""}`,
+      ),
     getJob: (jobId: string) => request<BackgroundJob>(`/jobs/${jobId}`),
   };
 }

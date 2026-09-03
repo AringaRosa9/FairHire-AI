@@ -3,9 +3,10 @@ import hmac
 import json
 from datetime import UTC, datetime
 from pathlib import Path
-from typing import Annotated
+from typing import Annotated, Any, Literal
 
 from fairhire_domain.access import Permission
+from fairhire_domain.audit import validate_audit_config
 from fairhire_domain.data_contract import FieldRole
 from fastapi import APIRouter, Depends, Header, HTTPException, Query, status
 from pydantic import BaseModel
@@ -26,6 +27,7 @@ from .models import (
     Dataset,
     DatasetField,
     IdempotencyRecord,
+    MetricResult,
     ModelVersion,
     OnboardingDraft,
     Organization,
@@ -39,6 +41,7 @@ from .schemas import (
     AssessmentResponse,
     AuditEventListResponse,
     AuditEventResponse,
+    AuditMetricSummary,
     AuditRunCreate,
     AuditRunResponse,
     BackgroundJobResponse,
@@ -48,6 +51,7 @@ from .schemas import (
     DraftUpdate,
     FieldMappingsCreate,
     LedgerVerificationResponse,
+    MetricResultResponse,
     ModelVersionCreate,
     ModelVersionResponse,
     PortfolioSummary,
@@ -121,7 +125,7 @@ def _record_response(
     )
 
 
-def _owned(db: Session, model: type, resource_id: str, organization_id: str):
+def _owned(db: Session, model: Any, resource_id: str, organization_id: str) -> Any:
     resource = db.scalar(
         select(model).where(model.id == resource_id, model.organization_id == organization_id)
     )
@@ -896,11 +900,51 @@ def create_audit_run(
         )
     run_id = new_id("run")
     job_id = new_id("job")
+    mapped_fields = db.scalars(
+        select(DatasetField).where(
+            DatasetField.organization_id == principal.organization_id,
+            DatasetField.dataset_id == dataset.id,
+        )
+    ).all()
+    role_fields: dict[str, list[str]] = {}
+    for field in mapped_fields:
+        if field.role:
+            role_fields.setdefault(field.role, []).append(field.name)
+    audit_config = {
+        "minimum_samples": 200,
+        "hard_suppression_floor": 20,
+        "minimum_time_coverage_days": 28,
+        "bootstrap_iterations": 1000,
+        "random_seed": 1729,
+        "decision_positive_value": True,
+        "label_positive_value": True,
+        "demographic_parity_ratio_threshold": 0.8,
+        "difference_threshold": 0.1,
+        "threshold_source": {
+            "source_type": "rule_pack",
+            "source_id": payload.policy_pack_version,
+            "version": payload.policy_pack_version,
+            "approved_by": None,
+            "legal_determination": False,
+        },
+        **payload.config,
+        "identifier_field": role_fields[FieldRole.IDENTIFIER.value][0],
+        "decision_field": role_fields[FieldRole.DECISION.value][0],
+        "timestamp_field": role_fields[FieldRole.TIMESTAMP.value][0],
+        "protected_attributes": role_fields.get(FieldRole.PROTECTED_ATTRIBUTE.value, []),
+        "feature_fields": role_fields.get(FieldRole.FEATURE.value, []),
+        "label_field": next(iter(role_fields.get(FieldRole.LABEL.value, [])), None),
+        "score_field": next(iter(role_fields.get(FieldRole.PREDICTION.value, [])), None),
+    }
+    try:
+        validate_audit_config(audit_config)
+    except (TypeError, ValueError) as error:
+        raise HTTPException(status.HTTP_422_UNPROCESSABLE_CONTENT, str(error)) from error
     fingerprint_source = ":".join(
         [
             dataset.content_hash,
             model.content_hash or model.version_label,
-            json.dumps(payload.config, sort_keys=True),
+            json.dumps(audit_config, sort_keys=True),
         ]
     )
     run = AuditRun(
@@ -911,7 +955,7 @@ def create_audit_run(
         dataset_id=dataset.id,
         policy_pack_version=payload.policy_pack_version,
         config_snapshot={
-            **payload.config,
+            **audit_config,
             "data_window_start": (
                 payload.data_window_start.isoformat() if payload.data_window_start else None
             ),
@@ -928,7 +972,7 @@ def create_audit_run(
     job = BackgroundJob(
         id=job_id,
         organization_id=principal.organization_id,
-        task_name="audit.prepare",
+        task_name="audit.analyze",
         resource_type="audit_run",
         resource_id=run_id,
         status="queued",
@@ -958,13 +1002,15 @@ def create_audit_run(
     try:
         dispatch_job(
             settings,
-            task_name="audit.prepare",
+            task_name="audit.analyze",
             job_id=job.id,
             kwargs={
                 "organization_id": principal.organization_id,
                 "audit_run_id": run.id,
                 "dataset_id": dataset.id,
                 "artifact_key": dataset.object_key,
+                "dataset_format": dataset.format,
+                "config": audit_config,
             },
         )
     except Exception as exc:
@@ -1003,6 +1049,50 @@ def get_audit_run(
     db: Annotated[Session, Depends(get_db)],
 ) -> AuditRunResponse:
     return AuditRunResponse.model_validate(_owned(db, AuditRun, run_id, principal.organization_id))
+
+
+@router.get(
+    "/audit-runs/{run_id}/metrics",
+    response_model=AuditMetricSummary,
+    tags=["audits"],
+)
+def get_audit_metrics(
+    run_id: str,
+    principal: Annotated[Principal, Depends(require_permission(Permission.SYSTEM_READ))],
+    db: Annotated[Session, Depends(get_db)],
+    category: Annotated[Literal["data_quality", "fairness"] | None, Query()] = None,
+) -> AuditMetricSummary:
+    _owned(db, AuditRun, run_id, principal.organization_id)
+    query = select(MetricResult).where(
+        MetricResult.organization_id == principal.organization_id,
+        MetricResult.audit_run_id == run_id,
+    )
+    if category:
+        query = query.where(MetricResult.category == category)
+    metrics = db.scalars(
+        query.order_by(
+            MetricResult.category,
+            MetricResult.protected_attribute,
+            MetricResult.metric_key,
+            MetricResult.comparison_group,
+        )
+    ).all()
+    status_counts: dict[str, int] = {}
+    evidence_gaps: list[str] = []
+    for metric in metrics:
+        status_counts[metric.status] = status_counts.get(metric.status, 0) + 1
+        if metric.status == "insufficient_evidence":
+            label = metric.metric_key.replace("_", " ")
+            if metric.comparison_group:
+                label += f" · {metric.comparison_group}"
+            evidence_gaps.append(label)
+    return AuditMetricSummary(
+        audit_run_id=run_id,
+        calculation_version=metrics[0].calculation_version if metrics else None,
+        status_counts=status_counts,
+        evidence_gaps=evidence_gaps,
+        items=[MetricResultResponse.model_validate(metric) for metric in metrics],
+    )
 
 
 @router.post("/audit-runs/{run_id}/cancel", response_model=AuditRunResponse, tags=["audits"])
@@ -1100,7 +1190,7 @@ def retry_job(
     run: AuditRun | None = None
     dataset: Dataset | None = None
     if job.resource_type == "audit_run":
-        run: AuditRun = _owned(db, AuditRun, job.resource_id, principal.organization_id)
+        run = _owned(db, AuditRun, job.resource_id, principal.organization_id)
         dataset = _owned(db, Dataset, run.dataset_id, principal.organization_id)
         run.status = "queued"
         run.error_code = None
@@ -1137,6 +1227,8 @@ def retry_job(
                     "audit_run_id": run.id,
                     "dataset_id": dataset.id,
                     "artifact_key": dataset.object_key,
+                    "dataset_format": dataset.format,
+                    "config": run.config_snapshot,
                 },
             )
         except Exception as exc:
