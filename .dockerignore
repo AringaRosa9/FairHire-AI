@@ -1,0 +1,15 @@
+.git
+.env
+.venv
+.uv-cache
+node_modules
+**/node_modules
+**/.next
+**/.turbo
+**/__pycache__
+**/.pytest_cache
+**/.ruff_cache
+**/test-results
+**/playwright-report
+*.pyc
+.DS_Store

@@ -1,7 +1,7 @@
 import { notFound } from "next/navigation";
 import Link from "next/link";
 import { StatusBadge } from "@fairhire/ui";
-import { getSystems } from "@/lib/api";
+import { getSystemDetail } from "@/lib/api";
 
 export const dynamic = "force-dynamic";
 
@@ -11,8 +11,8 @@ export default async function SystemDetailPage({
   params: Promise<{ systemId: string }>;
 }) {
   const { systemId } = await params;
-  const { items } = await getSystems();
-  const system = items.find((item) => item.id === systemId);
+  const { system, assessments, modelVersions, source } =
+    await getSystemDetail(systemId);
   if (!system) notFound();
   const blocked = system.release_status === "blocked";
   return (
@@ -74,10 +74,61 @@ export default async function SystemDetailPage({
           </div>
           <div>
             <dt>Legal classification</dt>
-            <dd>Employment high-risk use · legal confirmation required</dd>
+            <dd>
+              {assessments[0]
+                ? `${assessments[0].risk_class.replaceAll("_", " ")} · legal confirmation required`
+                : "Assessment not yet completed"}
+            </dd>
           </div>
         </dl>
       </section>
+      <div className="detail-columns">
+        <section className="version-list" aria-labelledby="assessment-history">
+          <p className="eyebrow">Rule evidence</p>
+          <h2 id="assessment-history">Applicability history</h2>
+          {assessments.length ? (
+            assessments.map((assessment) => (
+              <article key={assessment.id}>
+                <strong>Assessment v{assessment.version}</strong>
+                <span>
+                  {assessment.risk_class.replaceAll("_", " ")} ·{" "}
+                  {assessment.rule_pack_version}
+                </span>
+                <small>{assessment.rationale}</small>
+              </article>
+            ))
+          ) : (
+            <p className="quiet-empty">
+              No versioned assessment is available{" "}
+              {source === "fixture" ? "while the API is offline" : "yet"}.
+            </p>
+          )}
+        </section>
+        <section className="version-list" aria-labelledby="model-history">
+          <p className="eyebrow">Bound artifacts</p>
+          <h2 id="model-history">Model and output versions</h2>
+          {modelVersions.length ? (
+            modelVersions.map((version) => (
+              <article key={version.id}>
+                <strong>{version.version_label}</strong>
+                <span>
+                  {version.source_type.replaceAll("_", " ")} ·{" "}
+                  {version.release_state}
+                </span>
+                <small>
+                  {version.content_hash
+                    ? `SHA-256 ${version.content_hash.slice(0, 14)}…`
+                    : "Hash captured when material is uploaded"}
+                </small>
+              </article>
+            ))
+          ) : (
+            <p className="quiet-empty">
+              No model or output version has been registered.
+            </p>
+          )}
+        </section>
+      </div>
     </>
   );
 }

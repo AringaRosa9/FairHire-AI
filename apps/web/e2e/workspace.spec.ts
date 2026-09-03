@@ -28,3 +28,26 @@ test("mobile systems registry keeps filtering and risk status available", async 
   await expect(page.getByRole("navigation")).toBeVisible();
   await expect(page.getByRole("link", { name: /Systems/ })).toBeVisible();
 });
+
+test("first audit restores a real registration draft", async ({ page }) => {
+  await page.goto("/onboarding");
+  await expect(
+    page.getByRole("heading", { name: "Build an evidence-ready check" }),
+  ).toBeVisible();
+  await page.getByLabel("System name").fill("Restorable screening review");
+  await page
+    .getByLabel("Intended purpose")
+    .fill("Prioritizes applications for a human recruiter to review");
+  await page.reload();
+  await expect(page.getByLabel("System name")).toHaveValue(
+    "Restorable screening review",
+  );
+  await expect(
+    page.getByText(/Draft restored from this device/i),
+  ).toBeVisible();
+  expect(
+    await page.evaluate(
+      () => document.documentElement.scrollWidth <= window.innerWidth,
+    ),
+  ).toBe(true);
+});

@@ -35,3 +35,32 @@ def test_rls_rejects_cross_tenant_insert() -> None:
                 )
                 """
             )
+
+
+@pytest.mark.skipif(not APP_DATABASE_URL, reason="requires a migrated PostgreSQL app-role database")
+def test_week_three_to_five_tables_all_force_tenant_rls() -> None:
+    assert APP_DATABASE_URL is not None
+    expected = {
+        "regulatory_assessments",
+        "model_versions",
+        "onboarding_drafts",
+        "datasets",
+        "dataset_fields",
+        "audit_runs",
+        "background_jobs",
+    }
+    with psycopg.connect(APP_DATABASE_URL) as connection, connection.cursor() as cursor:
+        cursor.execute(
+            """
+            SELECT c.relname
+            FROM pg_class c
+            JOIN pg_namespace n ON n.oid = c.relnamespace
+            WHERE n.nspname = 'public'
+              AND c.relname = ANY(%s)
+              AND c.relrowsecurity
+              AND c.relforcerowsecurity
+            """,
+            (list(expected),),
+        )
+        protected = {row[0] for row in cursor.fetchall()}
+        assert protected == expected

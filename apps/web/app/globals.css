@@ -572,6 +572,32 @@ textarea {
   margin: 0;
   font-weight: 650;
 }
+.detail-columns {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: clamp(2rem, 5vw, 5rem);
+  margin-top: 4rem;
+}
+.version-list h2 {
+  margin: 0.25rem 0 1rem;
+  font-family: var(--font-editorial);
+  font-weight: 500;
+}
+.version-list article {
+  display: grid;
+  gap: 0.2rem;
+  padding: 1rem 0;
+  border-top: 1px solid var(--color-ink-200);
+}
+.version-list span,
+.version-list small,
+.quiet-empty {
+  color: var(--color-ink-600);
+  font-size: 0.75rem;
+}
+.version-list small {
+  margin-top: 0.25rem;
+}
 .onboarding {
   max-width: 70rem;
   margin: 0 auto;
@@ -774,6 +800,210 @@ textarea {
 .login-panel small {
   color: var(--color-ink-600);
 }
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+.step-context {
+  position: sticky;
+  top: 6.5rem;
+  align-self: start;
+}
+.stepper li[data-complete="true"] {
+  color: var(--color-green-800);
+}
+.stepper li[data-complete="true"] span {
+  border-color: var(--color-green-700);
+  background: var(--color-green-900);
+  color: var(--color-paper-raised);
+}
+.form-pair {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 1rem;
+}
+.question-list {
+  display: grid !important;
+  grid-template-columns: 1fr 1fr;
+}
+.file-drop {
+  min-height: 13rem;
+  place-content: center;
+  padding: 2rem;
+  border: 1px dashed var(--color-green-700);
+  background: var(--color-green-100);
+  text-align: center;
+  cursor: pointer;
+}
+.file-drop input {
+  width: auto;
+  min-height: 0;
+  margin: 0 auto;
+  padding: 0;
+  border: 0;
+  background: transparent;
+}
+.file-drop span,
+.file-drop small {
+  display: block;
+}
+.file-drop span {
+  color: var(--color-green-900);
+  font-family: var(--font-editorial);
+  font-size: 1.25rem;
+}
+.file-drop small {
+  color: var(--color-green-800);
+  font-weight: 500;
+}
+.form-error {
+  padding: 1rem;
+  border: 1px solid var(--color-red-600);
+  background: var(--color-red-100);
+  color: var(--color-red-800);
+}
+.form-error p {
+  margin: 0.25rem 0 0;
+}
+.text-button {
+  min-height: 44px;
+  margin-left: auto;
+  padding: 0.5rem;
+  border: 0;
+  background: transparent;
+  color: var(--color-green-800);
+  font-weight: 700;
+  text-decoration: underline;
+  text-underline-offset: 0.2rem;
+  cursor: pointer;
+}
+.fh-button:disabled,
+.text-button:disabled {
+  cursor: wait;
+  opacity: 0.6;
+}
+.mapping-table {
+  min-width: 0;
+  border-top: 1px solid var(--color-ink-300);
+}
+.mapping-head,
+.mapping-row {
+  display: grid;
+  grid-template-columns: minmax(8rem, 1fr) 6rem 5rem minmax(10rem, 0.75fr);
+  align-items: center;
+  gap: 1rem;
+  padding: 0.8rem 0;
+  border-bottom: 1px solid var(--color-ink-200);
+}
+.mapping-head {
+  color: var(--color-ink-600);
+  font-size: 0.65rem;
+  font-weight: 800;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
+.mapping-row > span {
+  color: var(--color-ink-600);
+  font-size: 0.75rem;
+}
+.mapping-row select {
+  min-height: 38px;
+  padding-block: 0.4rem;
+  font-size: 0.78rem;
+}
+.vault-note {
+  margin: 1rem 0 0;
+  padding: 0.8rem 1rem;
+  background: var(--color-paper-deep);
+  color: var(--color-ink-700);
+  font-size: 0.78rem;
+}
+.review-ledger {
+  border-top: 1px solid var(--color-ink-300);
+}
+.review-ledger > div {
+  display: grid;
+  grid-template-columns: 8rem 1fr;
+  gap: 0.2rem 1.5rem;
+  padding: 1rem 0;
+  border-bottom: 1px solid var(--color-ink-200);
+}
+.review-ledger span,
+.review-ledger small {
+  color: var(--color-ink-600);
+}
+.review-ledger span {
+  grid-row: 1 / span 2;
+  font-size: 0.72rem;
+}
+.review-ledger small {
+  font-size: 0.75rem;
+}
+.run-created {
+  max-width: 48rem;
+  margin: clamp(2rem, 8vw, 8rem) auto;
+  padding-block: clamp(2rem, 5vw, 4rem);
+  border-block: 1px solid var(--color-ink-300);
+}
+.run-created h2 {
+  margin: 0.4rem 0 1rem;
+  font-family: var(--font-editorial);
+  font-size: clamp(2.4rem, 6vw, 4.8rem);
+  font-weight: 500;
+  letter-spacing: -0.045em;
+  line-height: 0.98;
+}
+.run-created > p:not(.eyebrow) {
+  max-width: 62ch;
+  color: var(--color-ink-700);
+}
+.run-reference {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  margin: 2rem 0 3rem;
+  padding: 1rem 0;
+  border-block: 1px solid var(--color-ink-200);
+  font-size: 0.78rem;
+}
+.run-status-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  border-top: 1px solid var(--color-ink-300);
+}
+.run-status-grid > div {
+  min-width: 0;
+  padding: 1.25rem 1.5rem 1.25rem 0;
+  border-bottom: 1px solid var(--color-ink-200);
+}
+.run-status-grid > div:nth-child(odd) {
+  border-right: 1px solid var(--color-ink-200);
+}
+.run-status-grid > div:nth-child(even) {
+  padding-left: 1.5rem;
+}
+.run-status-grid span,
+.run-status-grid strong {
+  display: block;
+}
+.run-status-grid span {
+  margin-bottom: 0.3rem;
+  color: var(--color-ink-600);
+  font-size: 0.7rem;
+  font-weight: 750;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+.hash-value {
+  overflow-wrap: anywhere;
+  font-size: 0.75rem;
+}
 
 @media (max-width: 1120px) {
   :root {
@@ -962,12 +1192,28 @@ textarea {
     grid-template-columns: 1fr;
     gap: 0.3rem;
   }
+  .detail-columns {
+    grid-template-columns: 1fr;
+  }
   .stepper {
     overflow-x: auto;
     grid-template-columns: repeat(5, minmax(7rem, 1fr));
   }
   .onboarding-form {
     grid-template-columns: 1fr;
+  }
+  .step-context {
+    position: static;
+  }
+  .mapping-head {
+    display: none;
+  }
+  .mapping-row {
+    grid-template-columns: 1fr 1fr;
+  }
+  .mapping-row > strong,
+  .mapping-row > label {
+    grid-column: 1 / -1;
   }
   .finding-row {
     grid-template-columns: 2.5rem minmax(0, 1fr);
@@ -1004,6 +1250,28 @@ textarea {
   .form-actions .fh-button {
     width: 100%;
   }
+  .form-pair,
+  .question-list {
+    grid-template-columns: 1fr;
+  }
+  .text-button {
+    margin: 0;
+  }
+  .review-ledger > div {
+    grid-template-columns: 1fr;
+  }
+  .review-ledger span {
+    grid-row: auto;
+  }
+  .run-status-grid {
+    grid-template-columns: 1fr;
+  }
+  .run-status-grid > div:nth-child(odd) {
+    border-right: 0;
+  }
+  .run-status-grid > div:nth-child(even) {
+    padding-left: 0;
+  }
 }
 
 @media (prefers-reduced-motion: reduce) {
@@ -1014,6 +1282,11 @@ textarea {
   .skip-link {
     transition: none;
   }
+}
+
+input[type="checkbox"],
+input[type="radio"] {
+  accent-color: var(--color-green-800);
 }
 
 @media print {

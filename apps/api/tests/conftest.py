@@ -9,7 +9,7 @@ from sqlalchemy.pool import StaticPool
 
 from fairhire_api.db import Base, get_db
 from fairhire_api.main import app
-from fairhire_api.models import AISystem
+from fairhire_api.models import AISystem, Organization
 from fairhire_api.security import Principal, get_principal
 
 
@@ -23,6 +23,13 @@ def db() -> Generator[Session, None, None]:
     with factory() as session:
         session.add_all(
             [
+                Organization(
+                    id="org-one",
+                    name="Northstar",
+                    region="eu",
+                    policy_pack="eu-core+de@2026.09",
+                    retention_policy={"candidate_raw_days": 30},
+                ),
                 AISystem(
                     id="sys-one",
                     organization_id="org-one",

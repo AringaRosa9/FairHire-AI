@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { StatusBadge, SeverityBadge } from "@fairhire/ui";
 import { PageIntro } from "@/components/page-intro";
-import { getSystems } from "@/lib/api";
+import { getPortfolioSummary, getSystems } from "@/lib/api";
 
 export const metadata: Metadata = { title: "Portfolio" };
 export const dynamic = "force-dynamic";
@@ -19,14 +19,11 @@ const status = {
 };
 
 export default async function PortfolioPage() {
-  const { items, source } = await getSystems();
-  const counts = items.reduce(
-    (result, system) => ({
-      ...result,
-      [system.release_status]: (result[system.release_status] ?? 0) + 1,
-    }),
-    {} as Record<string, number>,
-  );
+  const [{ items, source }, { summary }] = await Promise.all([
+    getSystems(),
+    getPortfolioSummary(),
+  ]);
+  const counts = summary.release_counts;
   return (
     <>
       <PageIntro
@@ -42,7 +39,7 @@ export default async function PortfolioPage() {
       <section className="release-ledger" aria-labelledby="release-heading">
         <div className="ledger-heading">
           <p className="eyebrow">Release posture</p>
-          <h2 id="release-heading">4 systems in scope</h2>
+          <h2 id="release-heading">{summary.total_systems} systems in scope</h2>
           <span>
             {source === "api"
               ? "Live organization data"
@@ -63,10 +60,8 @@ export default async function PortfolioPage() {
             <span>Blocked</span>
           </div>
           <div>
-            <strong>
-              74<span className="unit">%</span>
-            </strong>
-            <span>Evidence complete</span>
+            <strong>{summary.active_audit_runs}</strong>
+            <span>Audits in progress</span>
           </div>
         </div>
       </section>

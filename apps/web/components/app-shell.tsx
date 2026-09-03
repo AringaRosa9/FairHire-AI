@@ -2,12 +2,13 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { useState } from "react";
+import { useEffect, useMemo, useState } from "react";
+import { createBrowserApi } from "@/lib/browser-api";
 import { Icon } from "./icons";
 
 const mainLinks = [
   { href: "/portfolio", label: "Overview", icon: "portfolio" as const },
-  { href: "/systems", label: "Systems", icon: "systems" as const, count: "4" },
+  { href: "/systems", label: "Systems", icon: "systems" as const, count: true },
   { href: "/audits/new", label: "New audit", icon: "checks" as const },
   {
     href: "/findings",
@@ -36,6 +37,35 @@ const pageMeta: Record<string, { eyebrow: string; context: string }> = {
 export function AppShell({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   const [open, setOpen] = useState(false);
+  const [identity, setIdentity] = useState({
+    organization: "Northstar Hiring Group",
+    region: "EU workspace",
+    displayName: "Maya Chen",
+    role: "Admin",
+    initials: "MC",
+    systemCount: "4",
+  });
+  const api = useMemo(() => createBrowserApi(), []);
+  useEffect(() => {
+    void Promise.all([api.session(), api.listSystems()])
+      .then(([session, systems]) => {
+        const initials = session.display_name
+          .split(" ")
+          .map((part) => part[0])
+          .join("")
+          .slice(0, 2)
+          .toUpperCase();
+        setIdentity({
+          organization: session.organization_name,
+          region: "EU workspace",
+          displayName: session.display_name,
+          role: session.role.replaceAll("_", " "),
+          initials,
+          systemCount: String(systems.total),
+        });
+      })
+      .catch(() => undefined);
+  }, [api]);
   const meta = pageMeta[pathname] ?? {
     eyebrow: "Assurance workspace",
     context: "Evidence, controls and accountable decisions",
@@ -86,7 +116,13 @@ export function AppShell({ children }: { children: React.ReactNode }) {
                   >
                     <Icon name={link.icon} />
                     <span>{link.label}</span>
-                    {"count" in link && <em>{link.count}</em>}
+                    {"count" in link && (
+                      <em>
+                        {link.href === "/systems"
+                          ? identity.systemCount
+                          : link.count}
+                      </em>
+                    )}
                   </Link>
                 </li>
               );
@@ -94,9 +130,11 @@ export function AppShell({ children }: { children: React.ReactNode }) {
           </ul>
         </nav>
         <div className="sidebar-foot">
-          <p>Northstar Hiring Group</p>
-          <span>EU workspace · Admin</span>
-          <Link href="/login">Maya Chen · Sign out</Link>
+          <p>{identity.organization}</p>
+          <span>
+            {identity.region} · {identity.role}
+          </span>
+          <Link href="/login">{identity.displayName} · Sign out</Link>
         </div>
       </aside>
       {open && (
@@ -121,8 +159,11 @@ export function AppShell({ children }: { children: React.ReactNode }) {
           </div>
           <div className="topbar-actions">
             <span className="environment">EU region</span>
-            <span className="avatar" aria-label="Signed in as Maya Chen">
-              MC
+            <span
+              className="avatar"
+              aria-label={`Signed in as ${identity.displayName}`}
+            >
+              {identity.initials}
             </span>
           </div>
         </header>

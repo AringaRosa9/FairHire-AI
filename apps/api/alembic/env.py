@@ -9,9 +9,7 @@ from fairhire_api.db import Base
 
 config = context.config
 settings = get_settings()
-config.set_main_option(
-    "sqlalchemy.url", settings.migration_database_url or settings.database_url
-)
+config.set_main_option("sqlalchemy.url", settings.migration_database_url or settings.database_url)
 if config.config_file_name:
     fileConfig(config.config_file_name)
 target_metadata = Base.metadata

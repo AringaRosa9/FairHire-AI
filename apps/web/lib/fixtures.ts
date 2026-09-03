@@ -14,6 +14,9 @@ export const fixtureSystems: AISystem[] = [
     owner_name: "Maya Chen",
     next_review_at: "2026-09-03T09:00:00Z",
     assessment_version: 3,
+    organization_roles: ["provider", "deployer"],
+    profiling: true,
+    solely_automated: false,
   },
   {
     id: "sys-cvlens",
@@ -28,6 +31,9 @@ export const fixtureSystems: AISystem[] = [
     owner_name: "Ana Silva",
     next_review_at: "2026-11-15T09:00:00Z",
     assessment_version: 2,
+    organization_roles: ["deployer"],
+    profiling: false,
+    solely_automated: false,
   },
   {
     id: "sys-interviewsense",
@@ -42,6 +48,9 @@ export const fixtureSystems: AISystem[] = [
     owner_name: "Ana Silva",
     next_review_at: "2026-09-01T13:00:00Z",
     assessment_version: 1,
+    organization_roles: ["deployer"],
+    profiling: true,
+    solely_automated: false,
   },
   {
     id: "sys-rolematch",
@@ -56,5 +65,8 @@ export const fixtureSystems: AISystem[] = [
     owner_name: "Jon Bell",
     next_review_at: "2026-12-01T09:00:00Z",
     assessment_version: 4,
+    organization_roles: ["provider", "deployer"],
+    profiling: false,
+    solely_automated: false,
   },
 ];
