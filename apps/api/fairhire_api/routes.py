@@ -39,6 +39,7 @@ from .schemas import (
     AISystemResponse,
     AssessmentCreate,
     AssessmentResponse,
+    AuditComparisonResponse,
     AuditEventListResponse,
     AuditEventResponse,
     AuditMetricSummary,
@@ -51,6 +52,7 @@ from .schemas import (
     DraftUpdate,
     FieldMappingsCreate,
     LedgerVerificationResponse,
+    MetricComparison,
     MetricResultResponse,
     ModelVersionCreate,
     ModelVersionResponse,
@@ -898,6 +900,21 @@ def create_audit_run(
             status.HTTP_422_UNPROCESSABLE_CONTENT,
             "Dataset upload and field mapping are incomplete",
         )
+    baseline_run: AuditRun | None = None
+    baseline_dataset: Dataset | None = None
+    if payload.baseline_run_id:
+        baseline_run = _owned(db, AuditRun, payload.baseline_run_id, principal.organization_id)
+        if baseline_run.ai_system_id != system.id:
+            raise HTTPException(
+                status.HTTP_422_UNPROCESSABLE_CONTENT,
+                "Baseline run belongs to another AI system",
+            )
+        if baseline_run.status != "succeeded":
+            raise HTTPException(
+                status.HTTP_422_UNPROCESSABLE_CONTENT,
+                "Baseline run must have succeeded",
+            )
+        baseline_dataset = _owned(db, Dataset, baseline_run.dataset_id, principal.organization_id)
     run_id = new_id("run")
     job_id = new_id("job")
     mapped_fields = db.scalars(
@@ -944,6 +961,7 @@ def create_audit_run(
         [
             dataset.content_hash,
             model.content_hash or model.version_label,
+            baseline_run.id if baseline_run else "no-baseline",
             json.dumps(audit_config, sort_keys=True),
         ]
     )
@@ -953,6 +971,7 @@ def create_audit_run(
         ai_system_id=system.id,
         model_version_id=model.id,
         dataset_id=dataset.id,
+        baseline_run_id=baseline_run.id if baseline_run else None,
         policy_pack_version=payload.policy_pack_version,
         config_snapshot={
             **audit_config,
@@ -963,6 +982,9 @@ def create_audit_run(
                 payload.data_window_end.isoformat() if payload.data_window_end else None
             ),
             "assessment_version": system.assessment_version,
+            "baseline_run_id": baseline_run.id if baseline_run else None,
+            "baseline_change_reason": payload.baseline_change_reason,
+            "baseline_approval_ref": payload.baseline_approval_ref,
         },
         data_fingerprint=hashlib.sha256(fingerprint_source.encode()).hexdigest(),
         status="queued",
@@ -987,7 +1009,13 @@ def create_audit_run(
         action="audit_run.queued",
         resource_type="audit_run",
         resource_id=run.id,
-        payload={"job_id": job.id, "data_fingerprint": run.data_fingerprint},
+        payload={
+            "job_id": job.id,
+            "data_fingerprint": run.data_fingerprint,
+            "baseline_run_id": run.baseline_run_id,
+            "baseline_change_reason": payload.baseline_change_reason,
+            "baseline_approval_ref": payload.baseline_approval_ref,
+        },
     )
     _record_response(
         db,
@@ -1011,6 +1039,11 @@ def create_audit_run(
                 "artifact_key": dataset.object_key,
                 "dataset_format": dataset.format,
                 "config": audit_config,
+                "baseline_artifact_key": (
+                    baseline_dataset.object_key if baseline_dataset else None
+                ),
+                "baseline_dataset_id": (baseline_dataset.id if baseline_dataset else None),
+                "baseline_dataset_format": (baseline_dataset.format if baseline_dataset else None),
             },
         )
     except Exception as exc:
@@ -1060,7 +1093,18 @@ def get_audit_metrics(
     run_id: str,
     principal: Annotated[Principal, Depends(require_permission(Permission.SYSTEM_READ))],
     db: Annotated[Session, Depends(get_db)],
-    category: Annotated[Literal["data_quality", "fairness"] | None, Query()] = None,
+    category: Annotated[
+        Literal[
+            "data_quality",
+            "fairness",
+            "proxy",
+            "counterfactual",
+            "explainability",
+            "drift",
+        ]
+        | None,
+        Query(),
+    ] = None,
 ) -> AuditMetricSummary:
     _owned(db, AuditRun, run_id, principal.organization_id)
     query = select(MetricResult).where(
@@ -1092,6 +1136,96 @@ def get_audit_metrics(
         status_counts=status_counts,
         evidence_gaps=evidence_gaps,
         items=[MetricResultResponse.model_validate(metric) for metric in metrics],
+    )
+
+
+@router.get(
+    "/audit-runs/{run_id}/comparison",
+    response_model=AuditComparisonResponse,
+    tags=["audits"],
+)
+def compare_audit_runs(
+    run_id: str,
+    principal: Annotated[Principal, Depends(require_permission(Permission.SYSTEM_READ))],
+    db: Annotated[Session, Depends(get_db)],
+    baseline_run_id: Annotated[str | None, Query()] = None,
+) -> AuditComparisonResponse:
+    current: AuditRun = _owned(db, AuditRun, run_id, principal.organization_id)
+    selected_baseline_id = baseline_run_id or current.baseline_run_id
+    if not selected_baseline_id:
+        raise HTTPException(
+            status.HTTP_422_UNPROCESSABLE_CONTENT,
+            "An explicit baseline run is required for version comparison",
+        )
+    baseline: AuditRun = _owned(db, AuditRun, selected_baseline_id, principal.organization_id)
+    if baseline.id == current.id or baseline.status != "succeeded":
+        raise HTTPException(
+            status.HTTP_422_UNPROCESSABLE_CONTENT,
+            "Baseline must be a different, successfully completed run",
+        )
+    if current.ai_system_id != baseline.ai_system_id:
+        raise HTTPException(
+            status.HTTP_422_UNPROCESSABLE_CONTENT,
+            "Audit runs belong to different AI systems",
+        )
+    baseline_change_reason = current.config_snapshot.get("baseline_change_reason")
+    baseline_approval_ref = current.config_snapshot.get("baseline_approval_ref")
+    if not baseline_change_reason or not baseline_approval_ref:
+        raise HTTPException(
+            status.HTTP_422_UNPROCESSABLE_CONTENT,
+            "Baseline comparison is missing change reason or approval evidence",
+        )
+    metrics = db.scalars(
+        select(MetricResult).where(
+            MetricResult.organization_id == principal.organization_id,
+            MetricResult.audit_run_id.in_([current.id, baseline.id]),
+        )
+    ).all()
+    by_run: dict[str, dict[tuple[str, str, str | None, str | None], MetricResult]] = {
+        current.id: {},
+        baseline.id: {},
+    }
+    for metric in metrics:
+        key = (
+            metric.category,
+            metric.metric_key,
+            metric.protected_attribute,
+            metric.comparison_group,
+        )
+        by_run[metric.audit_run_id][key] = metric
+    items = []
+    aligned_keys = set(by_run[current.id]).intersection(by_run[baseline.id])
+    for key in sorted(aligned_keys, key=lambda parts: tuple(part or "" for part in parts)):
+        current_metric = by_run[current.id][key]
+        baseline_metric = by_run[baseline.id][key]
+        delta = (
+            current_metric.value - baseline_metric.value
+            if current_metric.value is not None and baseline_metric.value is not None
+            else None
+        )
+        items.append(
+            MetricComparison(
+                category=key[0],
+                metric_key=key[1],
+                protected_attribute=key[2],
+                comparison_group=key[3],
+                baseline_value=baseline_metric.value,
+                current_value=current_metric.value,
+                delta=delta,
+                baseline_status=baseline_metric.status,
+                current_status=current_metric.status,
+            )
+        )
+    return AuditComparisonResponse(
+        current_run_id=current.id,
+        baseline_run_id=baseline.id,
+        current_model_version_id=current.model_version_id,
+        baseline_model_version_id=baseline.model_version_id,
+        current_data_fingerprint=current.data_fingerprint,
+        baseline_data_fingerprint=baseline.data_fingerprint,
+        baseline_change_reason=str(baseline_change_reason),
+        baseline_approval_ref=str(baseline_approval_ref),
+        items=items,
     )
 
 
@@ -1217,6 +1351,14 @@ def retry_job(
     )
     db.commit()
     if run is not None and dataset is not None:
+        baseline_dataset = None
+        if run.baseline_run_id:
+            baseline_run: AuditRun = _owned(
+                db, AuditRun, run.baseline_run_id, principal.organization_id
+            )
+            baseline_dataset = _owned(
+                db, Dataset, baseline_run.dataset_id, principal.organization_id
+            )
         try:
             dispatch_job(
                 settings,
@@ -1229,6 +1371,13 @@ def retry_job(
                     "artifact_key": dataset.object_key,
                     "dataset_format": dataset.format,
                     "config": run.config_snapshot,
+                    "baseline_artifact_key": (
+                        baseline_dataset.object_key if baseline_dataset else None
+                    ),
+                    "baseline_dataset_id": (baseline_dataset.id if baseline_dataset else None),
+                    "baseline_dataset_format": (
+                        baseline_dataset.format if baseline_dataset else None
+                    ),
                 },
             )
         except Exception as exc:

@@ -175,3 +175,162 @@ def test_missing_protected_attributes_create_an_evidence_gap() -> None:
     )
     assert coverage["status"] == "insufficient_evidence"
     assert coverage["details"]["protected_attributes_supplied"] is False
+
+
+def test_proxy_finding_keeps_association_and_output_impact_together() -> None:
+    rows = _rows(240)
+    for index, row in enumerate(rows):
+        row["postal_code"] = "north" if row["group"] == "A" else "south"
+        row["decision"] = row["group"] == "A" or index % 5 == 0
+    result = run_binary_audit(
+        rows,
+        {
+            "decision_field": "decision",
+            "timestamp_field": "timestamp",
+            "protected_attributes": ["group"],
+            "feature_fields": ["postal_code"],
+            "ablation_effects": {"postal_code": 0.18},
+            "minimum_samples": 100,
+            "bootstrap_iterations": 40,
+        },
+    )
+    finding = next(metric for metric in result["metrics"] if metric["category"] == "proxy")
+    assert finding["status"] == "review_required"
+    assert finding["details"]["association_evidence"]["normalized_mutual_information"] == 1
+    assert finding["details"]["output_impact_evidence"]["method"] == "controlled_ablation"
+    assert finding["details"]["confidence"] == "high"
+
+
+def test_counterfactual_pairs_reject_multi_variable_changes_and_keep_records() -> None:
+    pairs = []
+    for index in range(20):
+        pairs.append(
+            {
+                "pair_id": f"pair-{index}",
+                "changed_field": "name_signal",
+                "original": {
+                    "candidate_id": f"a-{index}",
+                    "name_signal": "A",
+                    "experience": 5,
+                    "decision": True,
+                },
+                "counterfactual": {
+                    "candidate_id": f"b-{index}",
+                    "name_signal": "B",
+                    "experience": 5,
+                    "decision": index != 0,
+                },
+            }
+        )
+    pairs.append(
+        {
+            "pair_id": "invalid",
+            "original": {"name_signal": "A", "experience": 5, "decision": True},
+            "counterfactual": {"name_signal": "B", "experience": 8, "decision": False},
+        }
+    )
+    result = run_binary_audit(
+        _rows(),
+        {
+            "decision_field": "decision",
+            "timestamp_field": "timestamp",
+            "protected_attributes": ["group"],
+            "feature_fields": ["experience"],
+            "counterfactual_pairs": pairs,
+            "counterfactual_change_fields": ["name_signal"],
+            "minimum_samples": 100,
+            "bootstrap_iterations": 40,
+        },
+    )
+    finding = next(
+        metric
+        for metric in result["metrics"]
+        if metric["metric_key"] == "counterfactual_consistency"
+    )
+    assert finding["raw_counts"] == {
+        "valid_pairs": 20,
+        "invalid_pairs": 1,
+        "output_changes": 1,
+    }
+    assert finding["details"]["pair_records"][0]["changed_field"] == "name_signal"
+
+
+def test_explainability_uses_shap_metadata_or_names_the_fallback() -> None:
+    rows = _rows()
+    for row in rows:
+        row["shap_experience"] = float(row["experience"]) / 20
+    shap_result = run_binary_audit(
+        rows,
+        {
+            "decision_field": "decision",
+            "timestamp_field": "timestamp",
+            "protected_attributes": ["group"],
+            "feature_fields": ["experience"],
+            "shap_value_fields": {"experience": "shap_experience"},
+            "explanation_background_dataset": "data-background@sha256:abc",
+            "random_seed": 73,
+            "minimum_samples": 100,
+            "bootstrap_iterations": 40,
+        },
+    )
+    explanation = next(
+        metric for metric in shap_result["metrics"] if metric["category"] == "explainability"
+    )
+    assert explanation["method"] == "precomputed_global_shap"
+    assert explanation["details"]["background_dataset"] == "data-background@sha256:abc"
+    assert explanation["details"]["random_seed"] == 73
+    fallback = run_binary_audit(
+        rows,
+        {
+            "decision_field": "decision",
+            "timestamp_field": "timestamp",
+            "protected_attributes": ["group"],
+            "feature_fields": ["experience"],
+            "minimum_samples": 100,
+            "bootstrap_iterations": 40,
+        },
+    )
+    fallback_explanation = next(
+        metric for metric in fallback["metrics"] if metric["category"] == "explainability"
+    )
+    assert fallback_explanation["method"] == "black_box_sensitivity"
+    assert "SHAP was unavailable" in fallback_explanation["details"]["method_boundary"]
+
+
+def test_drift_separates_distribution_change_from_harmful_performance_decline() -> None:
+    baseline = _rows()
+    current = _rows()
+    for index, row in enumerate(current):
+        row["experience"] = int(row["experience"]) + 20
+        if index % 4 == 0:
+            row["decision"] = not bool(row["label"])
+    result = run_binary_audit(
+        current,
+        {
+            "decision_field": "decision",
+            "label_field": "label",
+            "timestamp_field": "timestamp",
+            "protected_attributes": ["group"],
+            "feature_fields": ["experience"],
+            "minimum_samples": 100,
+            "bootstrap_iterations": 40,
+            "drift_warning_threshold": 0.05,
+            "drift_critical_threshold": 0.15,
+        },
+        baseline,
+    )
+    data_drift = next(
+        metric
+        for metric in result["metrics"]
+        if metric["metric_key"] == "data_distribution_drift"
+        and metric["comparison_group"] == "experience"
+    )
+    performance = next(
+        metric
+        for metric in result["metrics"]
+        if metric["metric_key"] == "performance_drift" and metric["comparison_group"] == "accuracy"
+    )
+    assert data_drift["details"]["change_kind"] == "distribution_change"
+    assert data_drift["details"]["harmful_performance_decline"] is False
+    assert performance["details"]["harmful_performance_decline"] is True
+    assert performance["status"] in {"warning", "critical"}

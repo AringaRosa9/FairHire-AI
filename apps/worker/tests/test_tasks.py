@@ -117,3 +117,68 @@ def test_analyze_audit_honors_cooperative_cancellation(monkeypatch: pytest.Monke
     )
     assert result["status"] == "cancelled"
     assert states == ["cancelled"]
+
+
+def test_analyze_audit_loads_explicit_baseline_for_drift(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    current_rows = [
+        {
+            "candidate_id": f"current-{index}",
+            "selected": index % 2 == 0,
+            "qualified": index % 2 == 0,
+            "experience": index + 10,
+            "group": "A" if index < 20 else "B",
+            "decision_at": "2026-09-01T00:00:00Z",
+        }
+        for index in range(40)
+    ]
+    baseline_rows = [
+        {
+            "candidate_id": f"baseline-{index}",
+            "selected": index % 2 == 0,
+            "qualified": index % 2 == 0,
+            "experience": index,
+            "group": "A" if index < 20 else "B",
+            "decision_at": "2026-08-01T00:00:00Z",
+        }
+        for index in range(40)
+    ]
+    loaded: list[str] = []
+
+    def load_rows(key: str, _: str) -> list[dict[str, object]]:
+        loaded.append(key)
+        return baseline_rows if "baseline" in key else current_rows
+
+    persisted: dict[str, object] = {}
+    monkeypatch.setattr("fairhire_worker.tasks._load_rows", load_rows)
+    monkeypatch.setattr("fairhire_worker.tasks._set_run_state", lambda **_: None)
+    monkeypatch.setattr("fairhire_worker.tasks._cancellation_requested", lambda **_: False)
+    monkeypatch.setattr(
+        "fairhire_worker.tasks._persist_audit_result", lambda **kwargs: persisted.update(kwargs)
+    )
+    result = analyze_audit.run(
+        organization_id="org-1",
+        audit_run_id="run-current",
+        dataset_id="data-current",
+        artifact_key="org-1/systems/sys-1/datasets/data-current/current.csv",
+        dataset_format="csv",
+        baseline_artifact_key=("org-1/systems/sys-1/datasets/data-baseline/baseline.csv"),
+        baseline_dataset_id="data-baseline",
+        baseline_dataset_format="csv",
+        config={
+            "identifier_field": "candidate_id",
+            "decision_field": "selected",
+            "label_field": "qualified",
+            "timestamp_field": "decision_at",
+            "protected_attributes": ["group"],
+            "feature_fields": ["experience"],
+            "minimum_samples": 20,
+            "bootstrap_iterations": 40,
+        },
+        job_id="job-current",
+    )
+    metrics = persisted["result"]["metrics"]
+    assert result["status"] == "succeeded"
+    assert len(loaded) == 2
+    assert any(metric["metric_key"] == "data_distribution_drift" for metric in metrics)

@@ -160,6 +160,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/audit-runs/{run_id}/comparison": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Compare Audit Runs */
+        get: operations["compare_audit_runs_v1_audit_runs__run_id__comparison_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/audit-runs/{run_id}/metrics": {
         parameters: {
             query?: never;
@@ -554,6 +571,27 @@ export interface components {
             /** Version */
             version: number;
         };
+        /** AuditComparisonResponse */
+        AuditComparisonResponse: {
+            /** Baseline Approval Ref */
+            baseline_approval_ref: string;
+            /** Baseline Change Reason */
+            baseline_change_reason: string;
+            /** Baseline Data Fingerprint */
+            baseline_data_fingerprint: string;
+            /** Baseline Model Version Id */
+            baseline_model_version_id: string;
+            /** Baseline Run Id */
+            baseline_run_id: string;
+            /** Current Data Fingerprint */
+            current_data_fingerprint: string;
+            /** Current Model Version Id */
+            current_model_version_id: string;
+            /** Current Run Id */
+            current_run_id: string;
+            /** Items */
+            items: components["schemas"]["MetricComparison"][];
+        };
         /** AuditEventListResponse */
         AuditEventListResponse: {
             /** Items */
@@ -618,6 +656,12 @@ export interface components {
         AuditRunCreate: {
             /** Ai System Id */
             ai_system_id: string;
+            /** Baseline Approval Ref */
+            baseline_approval_ref?: string | null;
+            /** Baseline Change Reason */
+            baseline_change_reason?: string | null;
+            /** Baseline Run Id */
+            baseline_run_id?: string | null;
             /**
              * Config
              * @default {}
@@ -640,6 +684,8 @@ export interface components {
         AuditRunResponse: {
             /** Ai System Id */
             ai_system_id: string;
+            /** Baseline Run Id */
+            baseline_run_id: string | null;
             /** Completed At */
             completed_at: string | null;
             /** Config Snapshot */
@@ -896,6 +942,27 @@ export interface components {
             /** Valid */
             valid: boolean;
         };
+        /** MetricComparison */
+        MetricComparison: {
+            /** Baseline Status */
+            baseline_status: string;
+            /** Baseline Value */
+            baseline_value: number | null;
+            /** Category */
+            category: string;
+            /** Comparison Group */
+            comparison_group: string | null;
+            /** Current Status */
+            current_status: string;
+            /** Current Value */
+            current_value: number | null;
+            /** Delta */
+            delta: number | null;
+            /** Metric Key */
+            metric_key: string;
+            /** Protected Attribute */
+            protected_attribute: string | null;
+        };
         /** MetricResultResponse */
         MetricResultResponse: {
             /** Audit Run Id */
@@ -906,7 +973,7 @@ export interface components {
              * Category
              * @enum {string}
              */
-            category: "data_quality" | "fairness";
+            category: "data_quality" | "fairness" | "proxy" | "counterfactual" | "explainability" | "drift";
             /** Comparison Group */
             comparison_group: string | null;
             /**
@@ -938,7 +1005,7 @@ export interface components {
              * Status
              * @enum {string}
              */
-            status: "pass" | "review_required" | "insufficient_evidence";
+            status: "pass" | "review_required" | "insufficient_evidence" | "warning" | "critical";
             /** Threshold */
             threshold: number | null;
             /** Threshold Operator */
@@ -1561,10 +1628,46 @@ export interface operations {
             };
         };
     };
+    compare_audit_runs_v1_audit_runs__run_id__comparison_get: {
+        parameters: {
+            query?: {
+                baseline_run_id?: string | null;
+            };
+            header?: {
+                "X-Organization-ID"?: string | null;
+                "X-Dev-User"?: string | null;
+            };
+            path: {
+                run_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AuditComparisonResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
     get_audit_metrics_v1_audit_runs__run_id__metrics_get: {
         parameters: {
             query?: {
-                category?: ("data_quality" | "fairness") | null;
+                category?: ("data_quality" | "fairness" | "proxy" | "counterfactual" | "explainability" | "drift") | null;
             };
             header?: {
                 "X-Organization-ID"?: string | null;

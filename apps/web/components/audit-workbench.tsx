@@ -1,6 +1,7 @@
 "use client";
 
 import type {
+  AuditComparison,
   AuditMetricSummary,
   AuditRun,
   BackgroundJob,
@@ -12,7 +13,15 @@ import Link from "next/link";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { createBrowserApi } from "@/lib/browser-api";
 
-type View = "summary" | "fairness" | "data-quality";
+export type AuditView =
+  | "summary"
+  | "fairness"
+  | "data-quality"
+  | "proxy"
+  | "counterfactual"
+  | "explainability"
+  | "drift"
+  | "comparison";
 
 const runTones = {
   queued: "review",
@@ -27,6 +36,8 @@ const metricTones = {
   pass: "approved",
   review_required: "review",
   insufficient_evidence: "insufficient",
+  warning: "review",
+  critical: "blocked",
 } as const;
 
 const metricLabels: Record<string, string> = {
@@ -48,7 +59,36 @@ const metricLabels: Record<string, string> = {
   precision: "Precision",
   calibration: "Calibration gap",
   error_rate: "Error rate",
+  proxy_risk: "Proxy risk",
+  counterfactual_consistency: "Counterfactual consistency",
+  global_feature_importance: "Global feature importance",
+  explanation_available: "Explanation available",
+  baseline_available: "Baseline available",
+  data_distribution_drift: "Data distribution drift",
+  performance_drift: "Performance drift",
+  fairness_selection_drift: "Fairness drift · selection",
+  fairness_error_drift: "Fairness drift · error",
+  fairness_calibration_drift: "Fairness drift · calibration",
+  explanation_rank_drift: "Explanation rank drift",
+  explanation_contribution_drift: "Explanation contribution drift",
+  age_output_trend: "Continuous age trend",
+  age_threshold_discontinuity: "Age threshold discontinuity",
 };
+
+function record(value: unknown): Record<string, unknown> {
+  return typeof value === "object" && value !== null
+    ? (value as Record<string, unknown>)
+    : {};
+}
+
+function numberValue(value: unknown): number | null {
+  return typeof value === "number" && Number.isFinite(value) ? value : null;
+}
+
+function formatScalar(value: number | null, signed = false) {
+  if (value === null) return "Not available";
+  return `${signed && value > 0 ? "+" : ""}${(value * 100).toFixed(1)}%`;
+}
 
 function formatMetric(metric: MetricResult) {
   if (metric.value === null) return "Not available";
@@ -57,7 +97,7 @@ function formatMetric(metric: MetricResult) {
   if (metric.metric_key === "time_coverage")
     return `${metric.value.toFixed(1)} days`;
   if (metric.metric_key.includes("ratio")) return metric.value.toFixed(2);
-  return `${(metric.value * 100).toFixed(1)}%`;
+  return formatScalar(metric.value, metric.category === "drift");
 }
 
 function formatInterval(metric: MetricResult) {
@@ -66,21 +106,26 @@ function formatInterval(metric: MetricResult) {
   const ratio = metric.metric_key.includes("ratio");
   return ratio
     ? `${metric.lower_bound.toFixed(2)}–${metric.upper_bound.toFixed(2)}`
-    : `${(metric.lower_bound * 100).toFixed(1)}–${(metric.upper_bound * 100).toFixed(1)}%`;
+    : `${formatScalar(metric.lower_bound)}–${formatScalar(metric.upper_bound)}`;
 }
 
-function WorkbenchTabs({ runId, view }: { runId: string; view: View }) {
+function WorkbenchTabs({ runId, view }: { runId: string; view: AuditView }) {
   const tabs = [
-    ["summary", "Summary", `/audits/${runId}/summary`],
-    ["fairness", "Group differences", `/audits/${runId}/fairness`],
-    ["data-quality", "Data quality", `/audits/${runId}/data-quality`],
+    ["summary", "Summary"],
+    ["fairness", "Group differences"],
+    ["data-quality", "Data quality"],
+    ["proxy", "Proxy"],
+    ["counterfactual", "Counterfactual"],
+    ["explainability", "Explainability"],
+    ["drift", "Drift"],
+    ["comparison", "Version compare"],
   ] as const;
   return (
     <nav className="workbench-tabs" aria-label="Audit results">
-      {tabs.map(([key, label, href]) => (
+      {tabs.map(([key, label]) => (
         <Link
           key={key}
-          href={href as Route}
+          href={`/audits/${runId}/${key}` as Route}
           aria-current={view === key ? "page" : undefined}
         >
           {label}
@@ -91,18 +136,7 @@ function WorkbenchTabs({ runId, view }: { runId: string; view: View }) {
 }
 
 function MetricTable({ metrics }: { metrics: MetricResult[] }) {
-  if (!metrics.length) {
-    return (
-      <div className="audit-empty">
-        <p className="eyebrow">Awaiting evidence</p>
-        <h2>No metrics have been published yet.</h2>
-        <p>
-          The worker will publish a complete, versioned result set when
-          calculation finishes.
-        </p>
-      </div>
-    );
-  }
+  if (!metrics.length) return <AuditEmpty />;
   return (
     <div
       className="metric-ledger"
@@ -172,11 +206,451 @@ function MetricTable({ metrics }: { metrics: MetricResult[] }) {
   );
 }
 
-export function AuditWorkbench({ runId, view }: { runId: string; view: View }) {
+function AuditEmpty({ children }: { children?: React.ReactNode }) {
+  return (
+    <div className="audit-empty">
+      <p className="eyebrow">Awaiting evidence</p>
+      <h2>No supported conclusion yet.</h2>
+      <p>
+        {children ??
+          "The worker will publish a complete, versioned result set when the required evidence is available."}
+      </p>
+    </div>
+  );
+}
+
+function ProxyLedger({ metrics }: { metrics: MetricResult[] }) {
+  if (!metrics.length) return <AuditEmpty />;
+  const proxyFindings = metrics.filter(
+    (metric) => metric.metric_key === "proxy_risk",
+  );
+  const ageMetrics = metrics.filter(
+    (metric) => metric.metric_key !== "proxy_risk",
+  );
+  return (
+    <>
+      <div className="proxy-ledger">
+        {proxyFindings.map((metric) => {
+          const details = record(metric.details);
+          const association = record(details.association_evidence);
+          const impact = record(details.output_impact_evidence);
+          return (
+            <article className="proxy-row" key={metric.id}>
+              <div className="proxy-subject">
+                <p className="eyebrow">
+                  {metric.protected_attribute ?? "Protected attribute"}
+                </p>
+                <h3>{metric.comparison_group ?? "Unnamed feature"}</h3>
+                <StatusBadge tone={metricTones[metric.status]}>
+                  {metric.status.replaceAll("_", " ")}
+                </StatusBadge>
+                <small>
+                  Confidence · {String(details.confidence ?? "low")}
+                </small>
+              </div>
+              <div className="evidence-column">
+                <span>01 · Group association</span>
+                <strong>
+                  {formatScalar(
+                    numberValue(association.normalized_mutual_information),
+                  )}
+                </strong>
+                <p>Normalized mutual information</p>
+                <small>
+                  Predictability lift{" "}
+                  {formatScalar(
+                    numberValue(association.predictability_lift_over_majority),
+                  )}
+                </small>
+              </div>
+              <div className="evidence-column">
+                <span>02 · Output impact</span>
+                <strong>{formatScalar(numberValue(impact.value))}</strong>
+                <p>
+                  {String(impact.method ?? "Unavailable").replaceAll("_", " ")}
+                </p>
+                <small>
+                  {String(details.limitation ?? "No limitation recorded")}
+                </small>
+              </div>
+            </article>
+          );
+        })}
+      </div>
+      {ageMetrics.length ? (
+        <div className="age-evidence">
+          <p className="eyebrow">Age-specific evidence</p>
+          <MetricTable metrics={ageMetrics} />
+        </div>
+      ) : null}
+    </>
+  );
+}
+
+function CounterfactualLedger({ metrics }: { metrics: MetricResult[] }) {
+  const metric = metrics[0];
+  if (!metric) return <AuditEmpty />;
+  const details = record(metric.details);
+  const pairs = Array.isArray(details.pair_records)
+    ? details.pair_records.map(record)
+    : [];
+  const invalid = Number(metric.raw_counts.invalid_pairs ?? 0);
+  return (
+    <div className="counterfactual-panel">
+      <div className="counterfactual-verdict">
+        <p className="eyebrow">Matched-pair consistency</p>
+        <strong>{formatMetric(metric)}</strong>
+        <StatusBadge tone={metricTones[metric.status]}>
+          {metric.status.replaceAll("_", " ")}
+        </StatusBadge>
+        <p>
+          {String(metric.raw_counts.valid_pairs ?? 0)} valid pairs · {invalid}{" "}
+          rejected pair{invalid === 1 ? "" : "s"}
+        </p>
+      </div>
+      {pairs.length ? (
+        <div
+          className="pair-ledger"
+          role="region"
+          aria-label="Counterfactual pair records"
+          tabIndex={0}
+        >
+          <table>
+            <thead>
+              <tr>
+                <th>Pair</th>
+                <th>Only changed variable</th>
+                <th>Original</th>
+                <th>Counterfactual</th>
+                <th>Output</th>
+              </tr>
+            </thead>
+            <tbody>
+              {pairs.map((pair, index) => (
+                <tr key={String(pair.pair_id ?? index)}>
+                  <th>{String(pair.pair_id ?? index + 1)}</th>
+                  <td>{String(pair.changed_field ?? "Invalid")}</td>
+                  <td>{String(pair.original_value ?? "—")}</td>
+                  <td>{String(pair.counterfactual_value ?? "—")}</td>
+                  <td>{pair.output_changed ? "Changed" : "Stable"}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      ) : (
+        <AuditEmpty>
+          Define matched pairs with exactly one permitted input change to make
+          this experiment reproducible.
+        </AuditEmpty>
+      )}
+    </div>
+  );
+}
+
+function ExplainabilityLedger({
+  metrics,
+  run,
+}: {
+  metrics: MetricResult[];
+  run: AuditRun;
+}) {
+  if (!metrics.length) return <AuditEmpty />;
+  const firstDetails = record(metrics[0].details);
+  const max = Math.max(...metrics.map((metric) => metric.value ?? 0), 0.000001);
+  return (
+    <>
+      <aside className="method-boundary">
+        <div>
+          <p className="eyebrow">Method boundary</p>
+          <h3>
+            {metrics[0].method === "black_box_sensitivity"
+              ? "SHAP unavailable — degraded safely"
+              : "Global SHAP attribution"}
+          </h3>
+          <p>
+            {String(
+              firstDetails.method_boundary ?? "No method boundary recorded.",
+            )}
+          </p>
+        </div>
+        <dl>
+          <div>
+            <dt>Model version</dt>
+            <dd>{run.model_version_id}</dd>
+          </div>
+          <div>
+            <dt>Data fingerprint</dt>
+            <dd>{run.data_fingerprint.slice(0, 16)}…</dd>
+          </div>
+          <div>
+            <dt>Background</dt>
+            <dd>{String(firstDetails.background_dataset ?? "Not used")}</dd>
+          </div>
+          <div>
+            <dt>Random seed</dt>
+            <dd>{String(firstDetails.random_seed ?? "Not recorded")}</dd>
+          </div>
+        </dl>
+      </aside>
+      <ol className="importance-ledger">
+        {metrics.map((metric) => {
+          const details = record(metric.details);
+          const correlated = Array.isArray(details.correlated_features)
+            ? details.correlated_features.join(", ")
+            : "";
+          return (
+            <li key={metric.id}>
+              <span className="importance-rank">
+                {String(details.rank ?? "—").padStart(2, "0")}
+              </span>
+              <div>
+                <strong>{metric.comparison_group ?? "Unknown feature"}</strong>
+                <span className="importance-track" aria-hidden="true">
+                  <i
+                    style={{
+                      transform: `scaleX(${(metric.value ?? 0) / max})`,
+                    }}
+                  />
+                </span>
+                <small>
+                  {correlated
+                    ? `Correlated with ${correlated}; attribution may be split.`
+                    : String(details.attribution_warning ?? "")}
+                </small>
+              </div>
+              <b>{formatScalar(metric.value)}</b>
+            </li>
+          );
+        })}
+      </ol>
+    </>
+  );
+}
+
+function DriftLedger({
+  metrics,
+  baselineRunId,
+}: {
+  metrics: MetricResult[];
+  baselineRunId: string | null;
+}) {
+  if (!baselineRunId)
+    return (
+      <AuditEmpty>
+        Select an explicit approved baseline Run when creating the audit.
+        Current data never silently replaces historical alerts.
+      </AuditEmpty>
+    );
+  if (!metrics.length) return <AuditEmpty />;
+  return (
+    <div className="drift-ledger">
+      <p className="baseline-note">
+        <span>Baseline</span>
+        <strong>{baselineRunId}</strong>
+      </p>
+      {metrics.map((metric) => {
+        const details = record(metric.details);
+        return (
+          <article key={metric.id}>
+            <div>
+              <p className="eyebrow">{String(details.drift_type ?? "drift")}</p>
+              <h3>
+                {metric.comparison_group ?? metricLabels[metric.metric_key]}
+              </h3>
+              <small>{metric.method.replaceAll("_", " ")}</small>
+            </div>
+            <div className="drift-values">
+              <span>
+                Baseline{" "}
+                <strong>
+                  {formatScalar(numberValue(details.baseline_value))}
+                </strong>
+              </span>
+              <span>
+                Current{" "}
+                <strong>
+                  {formatScalar(numberValue(details.current_value))}
+                </strong>
+              </span>
+              <span>
+                Change <strong>{formatMetric(metric)}</strong>
+              </span>
+            </div>
+            <div>
+              <StatusBadge tone={metricTones[metric.status]}>
+                {metric.status.replaceAll("_", " ")}
+              </StatusBadge>
+              <p>
+                {String(
+                  details.change_kind ?? "distribution_change",
+                ).replaceAll("_", " ")}
+              </p>
+            </div>
+          </article>
+        );
+      })}
+    </div>
+  );
+}
+
+function ComparisonLedger({
+  comparison,
+}: {
+  comparison: AuditComparison | null;
+}) {
+  if (!comparison)
+    return (
+      <AuditEmpty>
+        An explicit same-system baseline is required before versions can be
+        compared.
+      </AuditEmpty>
+    );
+  return (
+    <div className="comparison-ledger">
+      <div className="comparison-head">
+        <div>
+          <span>Baseline</span>
+          <strong>{comparison.baseline_model_version_id}</strong>
+          <small>{comparison.baseline_run_id}</small>
+        </div>
+        <b aria-hidden="true">→</b>
+        <div>
+          <span>Current</span>
+          <strong>{comparison.current_model_version_id}</strong>
+          <small>{comparison.current_run_id}</small>
+        </div>
+      </div>
+      <div className="comparison-governance">
+        <div>
+          <span>Baseline change reason</span>
+          <p>{comparison.baseline_change_reason}</p>
+        </div>
+        <div>
+          <span>Approval evidence</span>
+          <strong>{comparison.baseline_approval_ref}</strong>
+        </div>
+      </div>
+      <div
+        className="metric-ledger"
+        role="region"
+        aria-label="Version comparison"
+        tabIndex={0}
+      >
+        <table>
+          <thead>
+            <tr>
+              <th>Measure</th>
+              <th>Scope</th>
+              <th>Baseline</th>
+              <th>Current</th>
+              <th>Delta</th>
+              <th>State change</th>
+            </tr>
+          </thead>
+          <tbody>
+            {comparison.items.map((item) => (
+              <tr
+                key={`${item.category}:${item.metric_key}:${item.protected_attribute}:${item.comparison_group}`}
+              >
+                <th>
+                  {metricLabels[item.metric_key] ??
+                    item.metric_key.replaceAll("_", " ")}
+                  <small>{item.category}</small>
+                </th>
+                <td>
+                  {item.comparison_group ??
+                    item.protected_attribute ??
+                    "Dataset"}
+                </td>
+                <td className="metric-number">
+                  {formatScalar(item.baseline_value)}
+                </td>
+                <td className="metric-number">
+                  {formatScalar(item.current_value)}
+                </td>
+                <td className="metric-number">
+                  {formatScalar(item.delta, true)}
+                </td>
+                <td>
+                  {item.baseline_status.replaceAll("_", " ")} →{" "}
+                  {item.current_status.replaceAll("_", " ")}
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  );
+}
+
+const viewCopy: Record<
+  AuditView,
+  { eyebrow: string; title: string; description: string }
+> = {
+  summary: {
+    eyebrow: "Decision queue",
+    title: "Results needing attention",
+    description:
+      "Unknown, missing or undersized evidence remains visible instead of being folded into a passing state.",
+  },
+  fairness: {
+    eyebrow: "Evidence ledger",
+    title: "Group differences",
+    description:
+      "Every comparison keeps its reference group, raw counts, uncertainty and threshold provenance.",
+  },
+  "data-quality": {
+    eyebrow: "Evidence ledger",
+    title: "Data quality checks",
+    description:
+      "Input quality and coverage determine which downstream conclusions this audit can support.",
+  },
+  proxy: {
+    eyebrow: "Dual evidence",
+    title: "Proxy signal review",
+    description:
+      "A feature is escalated only when protected-group association and model-output impact can be traced together.",
+  },
+  counterfactual: {
+    eyebrow: "Controlled experiment",
+    title: "Matched-pair consistency",
+    description:
+      "Only pairs with one permitted input change are valid; rejected pairs remain in the experiment record.",
+  },
+  explainability: {
+    eyebrow: "Model behavior",
+    title: "Global explanation",
+    description:
+      "Attribution is descriptive, not causal. Unsupported models degrade to a named sensitivity method.",
+  },
+  drift: {
+    eyebrow: "Continuous monitoring",
+    title: "Baseline drift",
+    description:
+      "Distribution movement is separated from harmful performance decline, with warning and critical thresholds.",
+  },
+  comparison: {
+    eyebrow: "Version history",
+    title: "Evidence comparison",
+    description:
+      "Aligned measures preserve both model versions, data fingerprints and evidence-state changes.",
+  },
+};
+
+export function AuditWorkbench({
+  runId,
+  view,
+}: {
+  runId: string;
+  view: AuditView;
+}) {
   const api = useMemo(() => createBrowserApi(), []);
   const [run, setRun] = useState<AuditRun | null>(null);
   const [job, setJob] = useState<BackgroundJob | null>(null);
   const [results, setResults] = useState<AuditMetricSummary | null>(null);
+  const [comparison, setComparison] = useState<AuditComparison | null>(null);
   const [error, setError] = useState("");
   const refresh = useCallback(async () => {
     try {
@@ -185,9 +659,17 @@ export function AuditWorkbench({ runId, view }: { runId: string; view: View }) {
         api.getJob(nextRun.job_id),
         api.getAuditMetrics(runId),
       ]);
+      let nextComparison: AuditComparison | null = null;
+      if (view === "comparison" && nextRun.baseline_run_id) {
+        nextComparison = await api.compareAuditRun(
+          runId,
+          nextRun.baseline_run_id,
+        );
+      }
       setRun(nextRun);
       setJob(nextJob);
       setResults(nextResults);
+      setComparison(nextComparison);
       setError("");
     } catch (caught) {
       setError(
@@ -196,17 +678,12 @@ export function AuditWorkbench({ runId, view }: { runId: string; view: View }) {
           : "Audit evidence is unavailable.",
       );
     }
-  }, [api, runId]);
+  }, [api, runId, view]);
 
   useEffect(() => {
     const initialTimer = window.setTimeout(() => void refresh(), 0);
-    if (
-      run?.status === "succeeded" ||
-      run?.status === "failed" ||
-      run?.status === "cancelled"
-    ) {
+    if (["succeeded", "failed", "cancelled"].includes(run?.status ?? ""))
       return () => window.clearTimeout(initialTimer);
-    }
     const timer = window.setInterval(() => void refresh(), 3000);
     return () => {
       window.clearTimeout(initialTimer);
@@ -215,23 +692,26 @@ export function AuditWorkbench({ runId, view }: { runId: string; view: View }) {
   }, [refresh, run?.status]);
 
   const metrics = results?.items ?? [];
-  const visibleMetrics =
-    view === "fairness"
-      ? metrics.filter((metric) => metric.category === "fairness")
-      : view === "data-quality"
-        ? metrics.filter((metric) => metric.category === "data_quality")
-        : metrics.filter(
-            (metric) =>
-              metric.status !== "pass" ||
-              [
-                "sample_size",
-                "demographic_parity_ratio",
-                "selection_rate",
-              ].includes(metric.metric_key),
-          );
-  const passCount = results?.status_counts.pass ?? 0;
-  const reviewCount = results?.status_counts.review_required ?? 0;
-  const gapCount = results?.status_counts.insufficient_evidence ?? 0;
+  const categories: Partial<Record<AuditView, MetricResult["category"]>> = {
+    fairness: "fairness",
+    "data-quality": "data_quality",
+    proxy: "proxy",
+    counterfactual: "counterfactual",
+    explainability: "explainability",
+    drift: "drift",
+  };
+  const visibleMetrics = categories[view]
+    ? metrics.filter((metric) => metric.category === categories[view])
+    : metrics.filter(
+        (metric) =>
+          metric.status !== "pass" ||
+          [
+            "sample_size",
+            "demographic_parity_ratio",
+            "selection_rate",
+          ].includes(metric.metric_key),
+      );
+  const copy = viewCopy[view];
 
   return (
     <div className="audit-workbench">
@@ -270,19 +750,24 @@ export function AuditWorkbench({ runId, view }: { runId: string; view: View }) {
             aria-label="Audit evidence summary"
           >
             <div>
-              <span>Review required</span>
-              <strong>{reviewCount}</strong>
-              <small>policy signals</small>
+              <span>Critical</span>
+              <strong>{results?.status_counts.critical ?? 0}</strong>
+              <small>threshold breaches</small>
             </div>
             <div>
-              <span>Insufficient evidence</span>
-              <strong>{gapCount}</strong>
+              <span>Review + warning</span>
+              <strong>
+                {(results?.status_counts.review_required ?? 0) +
+                  (results?.status_counts.warning ?? 0)}
+              </strong>
+              <small>human decision queue</small>
+            </div>
+            <div>
+              <span>Evidence gaps</span>
+              <strong>
+                {results?.status_counts.insufficient_evidence ?? 0}
+              </strong>
               <small>never treated as pass</small>
-            </div>
-            <div>
-              <span>Passed checks</span>
-              <strong>{passCount}</strong>
-              <small>under this strategy</small>
             </div>
             <div>
               <span>Worker progress</span>
@@ -318,24 +803,27 @@ export function AuditWorkbench({ runId, view }: { runId: string; view: View }) {
       <section className="audit-section">
         <div className="section-heading">
           <div>
-            <p className="eyebrow">
-              {view === "summary" ? "Decision queue" : "Evidence ledger"}
-            </p>
-            <h2>
-              {view === "fairness"
-                ? "Group differences"
-                : view === "data-quality"
-                  ? "Data quality checks"
-                  : "Results needing attention"}
-            </h2>
+            <p className="eyebrow">{copy.eyebrow}</p>
+            <h2>{copy.title}</h2>
           </div>
-          <p>
-            {view === "fairness"
-              ? "Every comparison keeps its reference group, raw counts, uncertainty and threshold provenance."
-              : "Unknown, missing or undersized evidence remains visible instead of being folded into a passing state."}
-          </p>
+          <p>{copy.description}</p>
         </div>
-        <MetricTable metrics={visibleMetrics} />
+        {view === "proxy" ? (
+          <ProxyLedger metrics={visibleMetrics} />
+        ) : view === "counterfactual" ? (
+          <CounterfactualLedger metrics={visibleMetrics} />
+        ) : view === "explainability" && run ? (
+          <ExplainabilityLedger metrics={visibleMetrics} run={run} />
+        ) : view === "drift" ? (
+          <DriftLedger
+            metrics={visibleMetrics}
+            baselineRunId={run?.baseline_run_id ?? null}
+          />
+        ) : view === "comparison" ? (
+          <ComparisonLedger comparison={comparison} />
+        ) : (
+          <MetricTable metrics={visibleMetrics} />
+        )}
       </section>
 
       {results?.evidence_gaps.length ? (

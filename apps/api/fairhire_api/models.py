@@ -180,6 +180,7 @@ class AuditRun(Base):
     ai_system_id: Mapped[str] = mapped_column(ForeignKey("ai_systems.id"), index=True)
     model_version_id: Mapped[str] = mapped_column(ForeignKey("model_versions.id"), index=True)
     dataset_id: Mapped[str] = mapped_column(ForeignKey("datasets.id"), index=True)
+    baseline_run_id: Mapped[str | None] = mapped_column(ForeignKey("audit_runs.id"), index=True)
     config_version: Mapped[int] = mapped_column(Integer, nullable=False, default=1)
     policy_pack_version: Mapped[str] = mapped_column(String(100), nullable=False)
     config_snapshot: Mapped[dict[str, object]] = mapped_column(JSON, nullable=False, default=dict)

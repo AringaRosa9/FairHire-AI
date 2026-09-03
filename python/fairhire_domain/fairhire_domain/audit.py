@@ -1,4 +1,4 @@
-"""Deterministic data-quality and binary-classification fairness audit engine.
+"""Deterministic binary-classification audit engine.
 
 The engine intentionally accepts ordinary Python rows.  File decoding and protected
 attribute vault access stay at the worker boundary; the calculations remain small,
@@ -16,8 +16,15 @@ from datetime import UTC, datetime
 from hashlib import sha256
 from typing import Any, Literal
 
-CALCULATION_VERSION = "fairhire-binary-audit@1.0.0"
-MetricStatus = Literal["pass", "review_required", "insufficient_evidence"]
+from .advanced_audit import (
+    counterfactual_results,
+    drift_results,
+    explainability_results,
+    proxy_results,
+)
+
+CALCULATION_VERSION = "fairhire-binary-audit@2.0.0"
+MetricStatus = Literal["pass", "review_required", "insufficient_evidence", "warning", "critical"]
 
 
 def _missing(value: object) -> bool:
@@ -680,11 +687,22 @@ def fairness_results(rows: list[dict[str, Any]], config: dict[str, Any]) -> list
     return results
 
 
-def run_binary_audit(rows: list[dict[str, Any]], config: dict[str, Any]) -> dict[str, object]:
+def run_binary_audit(
+    rows: list[dict[str, Any]],
+    config: dict[str, Any],
+    baseline_rows: list[dict[str, Any]] | None = None,
+) -> dict[str, object]:
     if not rows:
         raise ValueError("At least one row is required for an audit")
     validate_audit_config(config)
-    metrics = data_quality_results(rows, config) + fairness_results(rows, config)
+    metrics = (
+        data_quality_results(rows, config)
+        + fairness_results(rows, config)
+        + proxy_results(rows, config)
+        + counterfactual_results(rows, config)
+        + explainability_results(rows, config)
+        + drift_results(rows, baseline_rows, config)
+    )
     counts = Counter(str(metric["status"]) for metric in metrics)
     return {
         "calculation_version": CALCULATION_VERSION,
@@ -710,6 +728,22 @@ def validate_audit_config(config: dict[str, Any]) -> None:
     difference_threshold = float(config.get("difference_threshold", 0.1))
     if not 0 <= ratio_threshold <= 1 or not 0 <= difference_threshold <= 1:
         raise ValueError("fairness thresholds must be between 0 and 1")
+    warning = float(config.get("drift_warning_threshold", 0.1))
+    critical = float(config.get("drift_critical_threshold", 0.2))
+    if not 0 <= warning < critical <= 1:
+        raise ValueError("drift thresholds must satisfy 0 <= warning < critical <= 1")
+    performance_warning = float(config.get("performance_drift_warning_threshold", 0.03))
+    performance_critical = float(config.get("performance_drift_critical_threshold", 0.08))
+    if not 0 <= performance_warning < performance_critical <= 1:
+        raise ValueError("performance drift thresholds must satisfy 0 <= warning < critical <= 1")
+    proxy_association = float(config.get("proxy_association_threshold", 0.1))
+    proxy_impact = float(config.get("proxy_output_impact_threshold", 0.05))
+    if not 0 <= proxy_association <= 1 or not 0 <= proxy_impact <= 1:
+        raise ValueError("proxy thresholds must be between 0 and 1")
+    consistency = float(config.get("counterfactual_consistency_threshold", 0.98))
+    minimum_pairs = int(config.get("counterfactual_minimum_pairs", 20))
+    if not 0 <= consistency <= 1 or minimum_pairs < 1:
+        raise ValueError("counterfactual threshold must be 0..1 and minimum_pairs at least 1")
     source = config.get(
         "threshold_source",
         {

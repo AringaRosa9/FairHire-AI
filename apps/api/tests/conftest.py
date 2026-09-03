@@ -61,7 +61,11 @@ def db() -> Generator[Session, None, None]:
                     model_version_id="model-one",
                     dataset_id="dataset-one",
                     policy_pack_version="eu-core+de@2026.09",
-                    config_snapshot={"random_seed": 42},
+                    config_snapshot={
+                        "random_seed": 42,
+                        "baseline_change_reason": "Quarterly approved monitoring baseline",
+                        "baseline_approval_ref": "approval-2026-q3",
+                    },
                     data_fingerprint="f" * 64,
                     status="succeeded",
                     job_id="job-metrics",

@@ -1,4 +1,8 @@
+import pytest
 from fastapi.testclient import TestClient
+from sqlalchemy.orm import Session
+
+from fairhire_api.models import AuditRun, MetricResult
 
 
 def test_health_is_public_and_versioned(client: TestClient) -> None:
@@ -218,3 +222,74 @@ def test_metric_results_include_uncertainty_counts_and_threshold_provenance(
 
 def test_metric_results_are_scoped_to_the_audit_run_tenant(client: TestClient) -> None:
     assert client.get("/v1/audit-runs/run-other/metrics").status_code == 404
+
+
+def test_version_comparison_uses_explicit_same_tenant_baseline(
+    client: TestClient, db: Session
+) -> None:
+    baseline = AuditRun(
+        id="run-baseline",
+        organization_id="org-one",
+        ai_system_id="sys-one",
+        model_version_id="model-baseline",
+        dataset_id="dataset-baseline",
+        policy_pack_version="eu-core+de@2026.08",
+        config_snapshot={"random_seed": 42},
+        data_fingerprint="b" * 64,
+        status="succeeded",
+        job_id="job-baseline",
+        submitted_by="user-one",
+    )
+    db.add(baseline)
+    db.add(
+        MetricResult(
+            id="metric-baseline",
+            organization_id="org-one",
+            audit_run_id=baseline.id,
+            category="fairness",
+            metric_key="demographic_parity_ratio",
+            protected_attribute="gender",
+            reference_group="women",
+            comparison_group="men",
+            value=0.86,
+            status="pass",
+            threshold=0.8,
+            threshold_operator=">=",
+            threshold_source={"source_id": "strategy-eu-binary-v1"},
+            raw_counts={},
+            method="stratified_bootstrap_percentile",
+            calculation_version="fairhire-binary-audit@1.0.0",
+            details={},
+        )
+    )
+    db.commit()
+    response = client.get("/v1/audit-runs/run-metrics/comparison?baseline_run_id=run-baseline")
+    assert response.status_code == 200
+    comparison = response.json()
+    assert comparison["baseline_run_id"] == "run-baseline"
+    assert comparison["items"][0]["delta"] == pytest.approx(-0.08)
+
+
+def test_version_comparison_does_not_leak_cross_tenant_baselines(
+    client: TestClient, db: Session
+) -> None:
+    db.add(
+        AuditRun(
+            id="run-secret-baseline",
+            organization_id="org-other",
+            ai_system_id="sys-secret",
+            model_version_id="model-secret",
+            dataset_id="dataset-secret",
+            policy_pack_version="eu-core@2026.08",
+            config_snapshot={},
+            data_fingerprint="c" * 64,
+            status="succeeded",
+            job_id="job-secret",
+            submitted_by="other",
+        )
+    )
+    db.commit()
+    response = client.get(
+        "/v1/audit-runs/run-metrics/comparison?baseline_run_id=run-secret-baseline"
+    )
+    assert response.status_code == 404

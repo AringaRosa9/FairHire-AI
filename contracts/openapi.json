@@ -555,6 +555,62 @@
         "title": "AssessmentResponse",
         "type": "object"
       },
+      "AuditComparisonResponse": {
+        "properties": {
+          "baseline_approval_ref": {
+            "title": "Baseline Approval Ref",
+            "type": "string"
+          },
+          "baseline_change_reason": {
+            "title": "Baseline Change Reason",
+            "type": "string"
+          },
+          "baseline_data_fingerprint": {
+            "title": "Baseline Data Fingerprint",
+            "type": "string"
+          },
+          "baseline_model_version_id": {
+            "title": "Baseline Model Version Id",
+            "type": "string"
+          },
+          "baseline_run_id": {
+            "title": "Baseline Run Id",
+            "type": "string"
+          },
+          "current_data_fingerprint": {
+            "title": "Current Data Fingerprint",
+            "type": "string"
+          },
+          "current_model_version_id": {
+            "title": "Current Model Version Id",
+            "type": "string"
+          },
+          "current_run_id": {
+            "title": "Current Run Id",
+            "type": "string"
+          },
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/MetricComparison"
+            },
+            "title": "Items",
+            "type": "array"
+          }
+        },
+        "required": [
+          "current_run_id",
+          "baseline_run_id",
+          "current_model_version_id",
+          "baseline_model_version_id",
+          "current_data_fingerprint",
+          "baseline_data_fingerprint",
+          "baseline_change_reason",
+          "baseline_approval_ref",
+          "items"
+        ],
+        "title": "AuditComparisonResponse",
+        "type": "object"
+      },
       "AuditEventListResponse": {
         "properties": {
           "items": {
@@ -708,6 +764,41 @@
             "title": "Ai System Id",
             "type": "string"
           },
+          "baseline_approval_ref": {
+            "anyOf": [
+              {
+                "maxLength": 300,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Baseline Approval Ref"
+          },
+          "baseline_change_reason": {
+            "anyOf": [
+              {
+                "maxLength": 2000,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Baseline Change Reason"
+          },
+          "baseline_run_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Baseline Run Id"
+          },
           "config": {
             "additionalProperties": true,
             "default": {},
@@ -767,6 +858,17 @@
           "ai_system_id": {
             "title": "Ai System Id",
             "type": "string"
+          },
+          "baseline_run_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Baseline Run Id"
           },
           "completed_at": {
             "anyOf": [
@@ -870,6 +972,7 @@
           "ai_system_id",
           "model_version_id",
           "dataset_id",
+          "baseline_run_id",
           "config_version",
           "policy_pack_version",
           "config_snapshot",
@@ -1515,6 +1618,94 @@
         "title": "LedgerVerificationResponse",
         "type": "object"
       },
+      "MetricComparison": {
+        "properties": {
+          "baseline_status": {
+            "title": "Baseline Status",
+            "type": "string"
+          },
+          "baseline_value": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Baseline Value"
+          },
+          "category": {
+            "title": "Category",
+            "type": "string"
+          },
+          "comparison_group": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Comparison Group"
+          },
+          "current_status": {
+            "title": "Current Status",
+            "type": "string"
+          },
+          "current_value": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Current Value"
+          },
+          "delta": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Delta"
+          },
+          "metric_key": {
+            "title": "Metric Key",
+            "type": "string"
+          },
+          "protected_attribute": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Protected Attribute"
+          }
+        },
+        "required": [
+          "category",
+          "metric_key",
+          "protected_attribute",
+          "comparison_group",
+          "baseline_value",
+          "current_value",
+          "delta",
+          "baseline_status",
+          "current_status"
+        ],
+        "title": "MetricComparison",
+        "type": "object"
+      },
       "MetricResultResponse": {
         "properties": {
           "audit_run_id": {
@@ -1528,7 +1719,11 @@
           "category": {
             "enum": [
               "data_quality",
-              "fairness"
+              "fairness",
+              "proxy",
+              "counterfactual",
+              "explainability",
+              "drift"
             ],
             "title": "Category",
             "type": "string"
@@ -1608,7 +1803,9 @@
             "enum": [
               "pass",
               "review_required",
-              "insufficient_evidence"
+              "insufficient_evidence",
+              "warning",
+              "critical"
             ],
             "title": "Status",
             "type": "string"
@@ -3187,6 +3384,96 @@
         ]
       }
     },
+    "/v1/audit-runs/{run_id}/comparison": {
+      "get": {
+        "operationId": "compare_audit_runs_v1_audit_runs__run_id__comparison_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "run_id",
+            "required": true,
+            "schema": {
+              "title": "Run Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "baseline_run_id",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Baseline Run Id"
+            }
+          },
+          {
+            "in": "header",
+            "name": "X-Organization-ID",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Organization-Id"
+            }
+          },
+          {
+            "in": "header",
+            "name": "X-Dev-User",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Dev-User"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AuditComparisonResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Compare Audit Runs",
+        "tags": [
+          "audits"
+        ]
+      }
+    },
     "/v1/audit-runs/{run_id}/metrics": {
       "get": {
         "operationId": "get_audit_metrics_v1_audit_runs__run_id__metrics_get",
@@ -3209,7 +3496,11 @@
                 {
                   "enum": [
                     "data_quality",
-                    "fairness"
+                    "fairness",
+                    "proxy",
+                    "counterfactual",
+                    "explainability",
+                    "drift"
                   ],
                   "type": "string"
                 },

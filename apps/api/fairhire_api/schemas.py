@@ -4,7 +4,7 @@ from typing import Annotated, Literal
 
 from fairhire_domain.access import Role
 from fairhire_domain.data_contract import FieldRole
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict, Field, model_validator
 
 
 class ProblemDetails(BaseModel):
@@ -241,10 +241,28 @@ class AuditRunCreate(BaseModel):
     ai_system_id: str
     model_version_id: str
     dataset_id: str
+    baseline_run_id: str | None = None
+    baseline_change_reason: Annotated[str | None, Field(max_length=2000)] = None
+    baseline_approval_ref: Annotated[str | None, Field(max_length=300)] = None
     policy_pack_version: Annotated[str, Field(min_length=3, max_length=100)]
     data_window_start: datetime | None = None
     data_window_end: datetime | None = None
     config: dict[str, object] = {}
+
+    @model_validator(mode="after")
+    def require_baseline_governance(self) -> "AuditRunCreate":
+        if self.baseline_run_id and (
+            not self.baseline_change_reason
+            or len(self.baseline_change_reason.strip()) < 10
+            or not self.baseline_approval_ref
+        ):
+            raise ValueError(
+                "baseline_change_reason and baseline_approval_ref are required "
+                "when selecting a baseline"
+            )
+        if not self.baseline_run_id and (self.baseline_change_reason or self.baseline_approval_ref):
+            raise ValueError("baseline governance metadata requires baseline_run_id")
+        return self
 
 
 class AuditRunResponse(BaseModel):
@@ -254,6 +272,7 @@ class AuditRunResponse(BaseModel):
     ai_system_id: str
     model_version_id: str
     dataset_id: str
+    baseline_run_id: str | None
     config_version: int
     policy_pack_version: str
     config_snapshot: dict[str, object]
@@ -272,7 +291,9 @@ class MetricResultResponse(BaseModel):
     model_config = ConfigDict(from_attributes=True)
     id: str
     audit_run_id: str
-    category: Literal["data_quality", "fairness"]
+    category: Literal[
+        "data_quality", "fairness", "proxy", "counterfactual", "explainability", "drift"
+    ]
     metric_key: str
     protected_attribute: str | None
     reference_group: str | None
@@ -280,7 +301,7 @@ class MetricResultResponse(BaseModel):
     value: float | None
     lower_bound: float | None
     upper_bound: float | None
-    status: Literal["pass", "review_required", "insufficient_evidence"]
+    status: Literal["pass", "review_required", "insufficient_evidence", "warning", "critical"]
     threshold: float | None
     threshold_operator: str | None
     threshold_source: dict[str, object]
@@ -297,6 +318,30 @@ class AuditMetricSummary(BaseModel):
     status_counts: dict[str, int]
     evidence_gaps: list[str]
     items: list[MetricResultResponse]
+
+
+class MetricComparison(BaseModel):
+    category: str
+    metric_key: str
+    protected_attribute: str | None
+    comparison_group: str | None
+    baseline_value: float | None
+    current_value: float | None
+    delta: float | None
+    baseline_status: str
+    current_status: str
+
+
+class AuditComparisonResponse(BaseModel):
+    current_run_id: str
+    baseline_run_id: str
+    current_model_version_id: str
+    baseline_model_version_id: str
+    current_data_fingerprint: str
+    baseline_data_fingerprint: str
+    baseline_change_reason: str
+    baseline_approval_ref: str
+    items: list[MetricComparison]
 
 
 class BackgroundJobResponse(BaseModel):

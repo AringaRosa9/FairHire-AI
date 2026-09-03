@@ -301,6 +301,9 @@ def analyze_audit(
     dataset_format: str,
     config: dict[str, object],
     job_id: str,
+    baseline_artifact_key: str | None = None,
+    baseline_dataset_id: str | None = None,
+    baseline_dataset_format: str | None = None,
 ) -> dict[str, object]:
     """Load a vault-approved dataset, compute metrics, and atomically publish results."""
     try:
@@ -328,7 +331,19 @@ def analyze_audit(
             progress=10,
         )
         rows = _load_rows(artifact_key, dataset_format)
-        result = run_binary_audit(rows, config)
+        baseline_rows = None
+        if baseline_artifact_key:
+            if not baseline_dataset_id or not baseline_dataset_format:
+                raise ValueError("Baseline artifact requires dataset id and format")
+            prepare_audit.run(
+                organization_id=organization_id,
+                audit_run_id=audit_run_id,
+                dataset_id=baseline_dataset_id,
+                artifact_key=baseline_artifact_key,
+                job_id=job_id,
+            )
+            baseline_rows = _load_rows(baseline_artifact_key, baseline_dataset_format)
+        result = run_binary_audit(rows, config, baseline_rows)
         if _cancellation_requested(organization_id=organization_id, job_id=job_id):
             _set_run_state(
                 organization_id=organization_id,
