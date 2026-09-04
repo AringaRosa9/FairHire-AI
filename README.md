@@ -43,19 +43,7 @@ The project is designed around **evidence over scores**: it records what was tes
 
 ### Architecture
 
-```mermaid
-flowchart LR
-    U[Browser] --> W[Next.js web app]
-    W -->|OIDC + organization context| A[FastAPI API]
-    A -->|tenant-scoped transactions| P[(PostgreSQL + RLS)]
-    A -->|signed upload URL| S[(MinIO / S3)]
-    A -->|JSON job| R[(Redis)]
-    R --> C[Celery audit worker]
-    C --> S
-    C --> P
-    A --> M[Prometheus]
-    M --> G[Grafana]
-```
+![FairHire AI system architecture](docs/assets/fairhire-architecture.svg)
 
 The API owns authorization and transactional records. The isolated worker receives immutable artifact references and never trusts tenant identity from uploaded content. See [Architecture and data model](docs/architecture.md) for trust boundaries, invariants, and the ERD.
 
@@ -220,19 +208,7 @@ FairHire AI 是面向招聘 AI 的技术评估、治理与证据管理平台。�
 
 ### 系统架构
 
-```mermaid
-flowchart LR
-    U[浏览器] --> W[Next.js Web]
-    W -->|OIDC + 组织上下文| A[FastAPI API]
-    A -->|租户事务| P[(PostgreSQL + RLS)]
-    A -->|签名上传地址| S[(MinIO / S3)]
-    A -->|JSON 任务| R[(Redis)]
-    R --> C[Celery 审计 Worker]
-    C --> S
-    C --> P
-    A --> M[Prometheus]
-    M --> G[Grafana]
-```
+![FairHire AI 系统架构](docs/assets/fairhire-architecture.svg)
 
 API 负责授权与事务记录；隔离的 Worker 只接收不可变的制品引用，不信任上传内容中的租户身份。完整信任边界、数据不变量和 ERD 请查看[架构与数据模型](docs/architecture.md)。
 
@@ -391,19 +367,7 @@ Projektet bygger på principen **evidens framför poäng**: det dokumenterar vad
 
 ### Arkitektur
 
-```mermaid
-flowchart LR
-    U[Webbläsare] --> W[Next.js-webbapp]
-    W -->|OIDC + organisationskontext| A[FastAPI API]
-    A -->|organisationsavgränsade transaktioner| P[(PostgreSQL + RLS)]
-    A -->|signerad uppladdnings-URL| S[(MinIO / S3)]
-    A -->|JSON-jobb| R[(Redis)]
-    R --> C[Celery audit worker]
-    C --> S
-    C --> P
-    A --> M[Prometheus]
-    M --> G[Grafana]
-```
+![FairHire AI-systemarkitektur](docs/assets/fairhire-architecture.svg)
 
 API:t ansvarar för behörighet och transaktionsdata. Den isolerade workern tar emot oföränderliga artefaktreferenser och litar aldrig på organisationsidentitet i uppladdat innehåll. Se [arkitektur och datamodell](docs/architecture.md) för tillitsgränser, invariants och ERD.
 
