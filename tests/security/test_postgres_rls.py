@@ -53,6 +53,9 @@ def test_all_tenant_tables_through_governance_loop_force_rls() -> None:
         "remediation_tasks",
         "finding_retests",
         "approvals",
+        "reports",
+        "knowledge_sources",
+        "assistant_answers",
     }
     with psycopg.connect(APP_DATABASE_URL) as connection, connection.cursor() as cursor:
         cursor.execute(

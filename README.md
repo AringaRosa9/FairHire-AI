@@ -1,6 +1,6 @@
 # FairHire AI
 
-Recruitment AI assurance and evidence workspace. This repository contains the engineering foundation, first-registration flow, audit workbench, and governance loop milestone through Week 11 described in `DEVELOPMENT_PLAN.md`.
+Recruitment AI assurance and evidence workspace. This repository contains the engineering foundation, first-registration flow, audit workbench, governance loop, evidence package, and read-only assistant milestones through Week 13 described in `DEVELOPMENT_PLAN.md`.
 
 ## What is included
 
@@ -18,10 +18,16 @@ Recruitment AI assurance and evidence workspace. This repository contains the en
 - Sequential Responsible AI, HR, and Legal/DPO approval chains with role enforcement and a computed Release Gate that blocks unresolved Critical findings.
 - Findings, finding detail, due-task, approval-center, and portfolio governance views with API-backed commands and explicit offline review fixtures.
 - Automatic reopening of expired risk acceptances and expiry of stale approvals, with every decision and state change written to the append-only hash ledger.
+- Immutable, versioned evidence packages with Executive Summary, Fairness, Explainability, Model/System Card, Risk Assessment, Audit Log, and Evidence Gap sections.
+- Metric-level traceability back to the exact Audit Run and Metric Result, SHA-256 content hashes, version differences, and audited PDF/JSON/CSV exports.
+- Governed official-source and organization-policy knowledge records with effective/review dates and role-based visibility.
+- A read-only compliance assistant that labels facts, inferences, and recommendations; cites each substantive paragraph; filters project evidence by tenant and role; detects instruction-override attempts; and records every answer.
 - Locally persisted and server-synced onboarding drafts with validation and recovery.
 - Versioned binary-classification schema, OpenAPI contract and generated TypeScript types.
 - Unit, contract, PostgreSQL RLS, API-to-MinIO integration and Playwright regression tests.
 - ERD, RBAC, threat model, retention matrix and responsive page specifications.
+
+Evidence and assistant behavior, including API examples and safety boundaries, is documented in `docs/evidence-assistant.md`.
 
 ## Start locally
 

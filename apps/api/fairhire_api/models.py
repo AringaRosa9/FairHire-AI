@@ -360,3 +360,67 @@ class AuditEvent(Base):
     occurred_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now()
     )
+
+
+class Report(Base):
+    __tablename__ = "reports"
+    __table_args__ = (UniqueConstraint("organization_id", "ai_system_id", "version"),)
+    id: Mapped[str] = mapped_column(String(36), primary_key=True)
+    organization_id: Mapped[str] = mapped_column(ForeignKey("organizations.id"), index=True)
+    ai_system_id: Mapped[str] = mapped_column(ForeignKey("ai_systems.id"), index=True)
+    audit_run_id: Mapped[str] = mapped_column(ForeignKey("audit_runs.id"), index=True)
+    previous_report_id: Mapped[str | None] = mapped_column(
+        ForeignKey("reports.id", ondelete="SET NULL")
+    )
+    version: Mapped[int] = mapped_column(Integer, nullable=False)
+    title: Mapped[str] = mapped_column(String(240), nullable=False)
+    status: Mapped[str] = mapped_column(String(24), nullable=False, default="draft", index=True)
+    policy_pack_version: Mapped[str] = mapped_column(String(100), nullable=False)
+    sections: Mapped[list[dict[str, object]]] = mapped_column(JSON, nullable=False, default=list)
+    evidence_index: Mapped[list[dict[str, object]]] = mapped_column(
+        JSON, nullable=False, default=list
+    )
+    evidence_gaps: Mapped[list[str]] = mapped_column(JSON, nullable=False, default=list)
+    content_hash: Mapped[str] = mapped_column(String(64), nullable=False)
+    created_by: Mapped[str] = mapped_column(String(200), nullable=False)
+    approved_by: Mapped[str | None] = mapped_column(String(200))
+    approved_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    superseded_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utc_now)
+
+
+class KnowledgeSource(Base):
+    __tablename__ = "knowledge_sources"
+    __table_args__ = (UniqueConstraint("organization_id", "source_key", "version"),)
+    id: Mapped[str] = mapped_column(String(36), primary_key=True)
+    organization_id: Mapped[str] = mapped_column(ForeignKey("organizations.id"), index=True)
+    source_key: Mapped[str] = mapped_column(String(120), nullable=False)
+    source_type: Mapped[str] = mapped_column(String(32), nullable=False)
+    title: Mapped[str] = mapped_column(String(300), nullable=False)
+    publisher: Mapped[str] = mapped_column(String(200), nullable=False)
+    uri: Mapped[str] = mapped_column(Text, nullable=False)
+    jurisdiction: Mapped[str | None] = mapped_column(String(80))
+    version: Mapped[str] = mapped_column(String(80), nullable=False)
+    effective_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+    reviewed_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+    content: Mapped[str] = mapped_column(Text, nullable=False)
+    content_hash: Mapped[str] = mapped_column(String(64), nullable=False)
+    allowed_roles: Mapped[list[str]] = mapped_column(JSON, nullable=False, default=list)
+    active: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True, index=True)
+    created_by: Mapped[str] = mapped_column(String(200), nullable=False)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utc_now)
+
+
+class AssistantAnswer(Base):
+    __tablename__ = "assistant_answers"
+    id: Mapped[str] = mapped_column(String(36), primary_key=True)
+    organization_id: Mapped[str] = mapped_column(ForeignKey("organizations.id"), index=True)
+    ai_system_id: Mapped[str | None] = mapped_column(ForeignKey("ai_systems.id"), index=True)
+    question: Mapped[str] = mapped_column(Text, nullable=False)
+    paragraphs: Mapped[list[dict[str, object]]] = mapped_column(JSON, nullable=False, default=list)
+    citations: Mapped[list[dict[str, object]]] = mapped_column(JSON, nullable=False, default=list)
+    rule_dates: Mapped[list[dict[str, object]]] = mapped_column(JSON, nullable=False, default=list)
+    evidence_refs: Mapped[list[str]] = mapped_column(JSON, nullable=False, default=list)
+    injection_detected: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
+    created_by: Mapped[str] = mapped_column(String(200), nullable=False)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utc_now)

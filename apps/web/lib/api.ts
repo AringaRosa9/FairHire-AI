@@ -9,6 +9,9 @@ import {
   type FindingDetail,
   type ReleaseGate,
   type RemediationTask,
+  type Report,
+  type AssistantAnswer,
+  type KnowledgeSource,
 } from "@fairhire/api-client";
 import {
   fixtureApprovals,
@@ -161,5 +164,44 @@ export async function getRemediationTasks(): Promise<{
       items: fixtureFindings.flatMap((finding) => finding.tasks),
       source: "fixture",
     };
+  }
+}
+
+export async function getReports(): Promise<{
+  items: Report[];
+  source: "api" | "fixture";
+}> {
+  try {
+    const result = await api.listReports();
+    return { items: result.items, source: "api" };
+  } catch {
+    return { items: [], source: "fixture" };
+  }
+}
+
+export async function getReportDetail(reportId: string): Promise<{
+  report: Report | undefined;
+  source: "api" | "fixture";
+}> {
+  try {
+    return { report: await api.getReport(reportId), source: "api" };
+  } catch {
+    return { report: undefined, source: "fixture" };
+  }
+}
+
+export async function getAssistantWorkspace(): Promise<{
+  answers: AssistantAnswer[];
+  sources: KnowledgeSource[];
+  source: "api" | "fixture";
+}> {
+  try {
+    const [answers, sources] = await Promise.all([
+      api.listAssistantAnswers(),
+      api.listKnowledgeSources(),
+    ]);
+    return { answers: answers.items, sources: sources.items, source: "api" };
+  } catch {
+    return { answers: [], sources: [], source: "fixture" };
   }
 }

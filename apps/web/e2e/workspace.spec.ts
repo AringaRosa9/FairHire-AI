@@ -88,3 +88,29 @@ test("due-task queue keeps completion evidence next to ownership", async ({
   await expect(page.getByText("Jon Bell", { exact: true })).toBeVisible();
   await expect(page.getByText("Overdue", { exact: true })).toBeVisible();
 });
+
+test("evidence package and read-only assistant expose their safety boundaries", async ({
+  page,
+}) => {
+  await page.goto("/reports");
+  await expect(
+    page.getByRole("heading", { name: "Reports traceable to their source" }),
+  ).toBeVisible();
+  await expect(
+    page.getByRole("heading", { name: "Create evidence package" }),
+  ).toBeVisible();
+  await expect(page.getByLabel("Completed Audit Run ID")).toBeVisible();
+
+  await page.goto("/assistant");
+  await expect(
+    page.getByRole("heading", { name: "Compliance help that shows its work" }),
+  ).toBeVisible();
+  await expect(page.getByText("Write tools")).toBeVisible();
+  await expect(page.getByText("None", { exact: true })).toBeVisible();
+  await expect(page.getByRole("textbox", { name: "Question" })).toBeVisible();
+  expect(
+    await page.evaluate(
+      () => document.documentElement.scrollWidth <= window.innerWidth,
+    ),
+  ).toBe(true);
+});

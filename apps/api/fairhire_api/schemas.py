@@ -552,3 +552,153 @@ class PortfolioSummary(BaseModel):
     overdue_tasks: int
     pending_approvals: int
     critical_blockers: int
+
+
+ReportStatus = Literal["draft", "approved", "superseded"]
+
+
+class ReportCreate(BaseModel):
+    ai_system_id: str
+    audit_run_id: str
+    title: Annotated[str | None, Field(min_length=3, max_length=240)] = None
+
+
+class ReportSection(BaseModel):
+    key: Literal[
+        "executive_summary",
+        "fairness",
+        "explainability",
+        "model_system_card",
+        "risk_assessment",
+        "audit_log",
+        "evidence_gap",
+    ]
+    title: str
+    summary: str
+    items: list[dict[str, object]] = []
+
+
+class EvidenceTrace(BaseModel):
+    reference: str
+    audit_run_id: str
+    metric_result_id: str | None = None
+    label: str
+    value: float | None = None
+    method: str | None = None
+    calculation_version: str | None = None
+
+
+class ReportResponse(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+    id: str
+    organization_id: str
+    ai_system_id: str
+    audit_run_id: str
+    previous_report_id: str | None
+    version: int
+    title: str
+    status: ReportStatus
+    policy_pack_version: str
+    sections: list[ReportSection]
+    evidence_index: list[EvidenceTrace]
+    evidence_gaps: list[str]
+    content_hash: str
+    created_by: str
+    approved_by: str | None
+    approved_at: datetime | None
+    superseded_at: datetime | None
+    created_at: datetime
+
+
+class ReportListResponse(Pagination):
+    items: list[ReportResponse]
+
+
+class ReportApprovalCreate(BaseModel):
+    reason: Annotated[str, Field(min_length=5, max_length=4000)]
+
+
+class ReportDifference(BaseModel):
+    path: str
+    before: object | None = None
+    after: object | None = None
+
+
+class ReportDiffResponse(BaseModel):
+    report_id: str
+    compared_report_id: str
+    changes: list[ReportDifference]
+
+
+class KnowledgeSourceCreate(BaseModel):
+    source_key: Annotated[str, Field(min_length=2, max_length=120)]
+    source_type: Literal["official", "organization_policy"]
+    title: Annotated[str, Field(min_length=3, max_length=300)]
+    publisher: Annotated[str, Field(min_length=2, max_length=200)]
+    uri: Annotated[str, Field(min_length=8, max_length=2000)]
+    jurisdiction: Annotated[str | None, Field(max_length=80)] = None
+    version: Annotated[str, Field(min_length=1, max_length=80)]
+    effective_at: datetime
+    reviewed_at: datetime
+    content: Annotated[str, Field(min_length=20, max_length=100_000)]
+    allowed_roles: list[Role] = []
+    active: bool = True
+
+
+class KnowledgeSourceResponse(KnowledgeSourceCreate):
+    model_config = ConfigDict(from_attributes=True)
+    id: str
+    organization_id: str
+    content_hash: str
+    created_by: str
+    created_at: datetime
+
+
+class KnowledgeSourceListResponse(Pagination):
+    items: list[KnowledgeSourceResponse]
+
+
+class AssistantAnswerCreate(BaseModel):
+    question: Annotated[str, Field(min_length=3, max_length=4000)]
+    ai_system_id: str | None = None
+
+
+class AssistantParagraph(BaseModel):
+    classification: Literal["fact", "inference", "recommendation"]
+    text: str
+    citation_ids: list[str]
+
+
+class AssistantCitation(BaseModel):
+    id: str
+    source_type: Literal["official", "organization_policy", "project_evidence"]
+    title: str
+    locator: str
+    uri: str | None = None
+    effective_at: datetime | None = None
+
+
+class RuleDate(BaseModel):
+    source_id: str
+    version: str
+    effective_at: datetime
+    reviewed_at: datetime
+
+
+class AssistantAnswerResponse(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+    id: str
+    organization_id: str
+    ai_system_id: str | None
+    question: str
+    paragraphs: list[AssistantParagraph]
+    citations: list[AssistantCitation]
+    rule_dates: list[RuleDate]
+    evidence_refs: list[str]
+    injection_detected: bool
+    created_by: str
+    created_at: datetime
+
+
+class AssistantAnswerListResponse(Pagination):
+    items: list[AssistantAnswerResponse]

@@ -19,6 +19,7 @@ const mainLinks = [
   { href: "/approvals", label: "Approvals", icon: "checks" as const },
   { href: "/tasks", label: "Due tasks", icon: "findings" as const },
   { href: "/reports", label: "Reports", icon: "reports" as const },
+  { href: "/assistant", label: "Compliance help", icon: "checks" as const },
 ] as const;
 
 const pageMeta: Record<string, { eyebrow: string; context: string }> = {
@@ -33,6 +34,14 @@ const pageMeta: Record<string, { eyebrow: string; context: string }> = {
   "/onboarding": {
     eyebrow: "Getting started",
     context: "First audit · saved as a draft",
+  },
+  "/reports": {
+    eyebrow: "Evidence & reports",
+    context: "Versioned, traceable and exportable",
+  },
+  "/assistant": {
+    eyebrow: "Read-only assistant",
+    context: "Cited policy and project evidence",
   },
 };
 

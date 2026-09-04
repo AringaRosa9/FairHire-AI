@@ -45,6 +45,18 @@ export type ApprovalChain = components["schemas"]["ApprovalChainResponse"];
 export type ApprovalDecisionCreate =
   components["schemas"]["ApprovalDecisionCreate"];
 export type ReleaseGate = components["schemas"]["ReleaseGateResponse"];
+export type Report = components["schemas"]["ReportResponse"];
+export type ReportList = components["schemas"]["ReportListResponse"];
+export type ReportCreate = components["schemas"]["ReportCreate"];
+export type ReportDiff = components["schemas"]["ReportDiffResponse"];
+export type AssistantAnswer = components["schemas"]["AssistantAnswerResponse"];
+export type AssistantAnswerList =
+  components["schemas"]["AssistantAnswerListResponse"];
+export type AssistantAnswerCreate =
+  components["schemas"]["AssistantAnswerCreate"];
+export type KnowledgeSource = components["schemas"]["KnowledgeSourceResponse"];
+export type KnowledgeSourceList =
+  components["schemas"]["KnowledgeSourceListResponse"];
 
 export type ClientOptions = {
   baseUrl: string;
@@ -78,6 +90,20 @@ export function createApiClient({
       );
     }
     return response.json() as Promise<T>;
+  }
+
+  async function requestBlob(path: string): Promise<Blob> {
+    const headers = new Headers({ Accept: "application/octet-stream" });
+    if (organizationId) headers.set("X-Organization-ID", organizationId);
+    if (devUser) headers.set("X-Dev-User", devUser);
+    const response = await fetcher(`${baseUrl}${path}`, {
+      headers,
+      cache: "no-store",
+    });
+    if (!response.ok) {
+      throw new Error(`FairHire export failed (${response.status})`);
+    }
+    return response.blob();
   }
 
   function write<T>(
@@ -303,5 +329,42 @@ export function createApiClient({
       ),
     getReleaseGate: (systemId: string) =>
       request<ReleaseGate>(`/ai-systems/${systemId}/release-gate`),
+    listReports: (filters?: { aiSystemId?: string; status?: string }) => {
+      const query = new URLSearchParams();
+      if (filters?.aiSystemId) query.set("ai_system_id", filters.aiSystemId);
+      if (filters?.status) query.set("status", filters.status);
+      return request<ReportList>(
+        `/reports${query.size ? `?${query.toString()}` : ""}`,
+      );
+    },
+    getReport: (reportId: string) => request<Report>(`/reports/${reportId}`),
+    createReport: (payload: ReportCreate, idempotencyKey: string) =>
+      write<Report>("/reports", "POST", payload, idempotencyKey),
+    approveReport: (reportId: string, reason: string, idempotencyKey: string) =>
+      write<Report>(
+        `/reports/${reportId}/approve`,
+        "POST",
+        { reason },
+        idempotencyKey,
+      ),
+    diffReport: (reportId: string, comparedReportId?: string) =>
+      request<ReportDiff>(
+        `/reports/${reportId}/diff${comparedReportId ? `?compared_report_id=${encodeURIComponent(comparedReportId)}` : ""}`,
+      ),
+    downloadReport: (reportId: string, format: "pdf" | "json" | "csv") =>
+      requestBlob(`/reports/${reportId}/download?format=${format}`),
+    listKnowledgeSources: () =>
+      request<KnowledgeSourceList>("/knowledge-sources"),
+    askAssistant: (payload: AssistantAnswerCreate, idempotencyKey: string) =>
+      write<AssistantAnswer>(
+        "/assistant/answers",
+        "POST",
+        payload,
+        idempotencyKey,
+      ),
+    listAssistantAnswers: (aiSystemId?: string) =>
+      request<AssistantAnswerList>(
+        `/assistant/answers${aiSystemId ? `?ai_system_id=${encodeURIComponent(aiSystemId)}` : ""}`,
+      ),
   };
 }

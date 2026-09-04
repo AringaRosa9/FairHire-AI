@@ -4,6 +4,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 
 from .config import get_settings
+from .evidence_routes import router as evidence_router
 from .governance_routes import router as governance_router
 from .routes import router
 from .schemas import ProblemDetails
@@ -69,3 +70,4 @@ async def validation_problem(request: Request, exc: RequestValidationError) -> J
 
 app.include_router(router)
 app.include_router(governance_router)
+app.include_router(evidence_router)
