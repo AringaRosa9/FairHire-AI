@@ -11,6 +11,7 @@ from fairhire_api.models import (
     Finding,
     MetricResult,
     ModelVersion,
+    Organization,
     RegulatoryAssessment,
 )
 from fairhire_api.security import Principal, get_principal
@@ -20,6 +21,11 @@ def test_health_is_public_and_versioned(client: TestClient) -> None:
     response = client.get("/v1/health")
     assert response.status_code == 200
     assert response.json() == {"status": "ok", "version": "0.1.0"}
+    assert client.get("/v1/health/live").json()["status"] == "ok"
+    metrics = client.get("/v1/metrics")
+    assert metrics.status_code == 200
+    assert "fairhire_http_requests_total" in metrics.text
+    assert 'fairhire_dependency_ready{dependency="database"} 1' in metrics.text
 
 
 def test_session_exposes_effective_permissions(client: TestClient) -> None:
@@ -27,6 +33,28 @@ def test_session_exposes_effective_permissions(client: TestClient) -> None:
     assert response.status_code == 200
     assert response.json()["organization_id"] == "org-one"
     assert "system:read" in response.json()["permissions"]
+
+
+def test_policy_pack_update_is_versioned_audited_and_invalidates_old_evidence(
+    client: TestClient,
+) -> None:
+    expires_at = datetime.now(UTC) + timedelta(days=90)
+    response = client.put(
+        "/v1/organization/policy-pack",
+        headers={"Idempotency-Key": "policy-pack-2026-10"},
+        json={
+            "version": "eu-core+de@2026.10",
+            "expires_at": expires_at.isoformat(),
+            "reason": "Approved quarterly rule review and source refresh",
+        },
+    )
+    assert response.status_code == 200
+    assert response.json()["version"] == "eu-core+de@2026.10"
+    gate = client.get("/v1/ai-systems/sys-one/release-gate").json()
+    assert gate["status"] == "blocked"
+    assert any(blocker["code"] == "rule_pack_outdated" for blocker in gate["blockers"])
+    events = client.get("/v1/audit-events").json()["items"]
+    assert any(item["action"] == "policy_pack.updated" for item in events)
 
 
 def test_system_list_filters_by_organization_even_without_rls(client: TestClient) -> None:
@@ -215,6 +243,33 @@ def test_pickle_upload_is_rejected_with_safe_alternative(client: TestClient) -> 
     )
     assert response.status_code == 422
     assert "prediction outputs" in response.json()["detail"]
+
+
+@pytest.mark.parametrize(
+    ("filename", "content_type", "detail"),
+    [
+        ("../decisions.csv", "text/csv", "Filename must not contain a path"),
+        ("..\\decisions.csv", "text/csv", "Filename must not contain a path"),
+        ("decisions.csv", "application/x-executable", "Content-Type does not match"),
+        ("claims.jsonl", "text/csv", "Content-Type does not match"),
+    ],
+)
+def test_upload_rejects_path_traversal_and_mime_confusion(
+    client: TestClient, filename: str, content_type: str, detail: str
+) -> None:
+    response = client.post(
+        "/v1/datasets/initiate-upload",
+        headers={"Idempotency-Key": f"unsafe-{filename}-{content_type}"},
+        json={
+            "ai_system_id": "sys-one",
+            "filename": filename,
+            "content_type": content_type,
+            "size_bytes": 100,
+            "sha256": "a" * 64,
+        },
+    )
+    assert response.status_code == 422
+    assert detail in response.json()["detail"]
 
 
 def test_metric_results_include_uncertainty_counts_and_threshold_provenance(
@@ -430,6 +485,49 @@ def test_expired_risk_acceptance_reopens_and_reblocks_release(
     assert db.get(Finding, finding_id).status == "open"  # type: ignore[union-attr]
     events = client.get("/v1/audit-events").json()["items"]
     assert any(item["action"] == "finding.acceptance_expired" for item in events)
+
+
+def test_insufficient_evidence_cannot_be_displayed_as_approved(
+    client: TestClient, db: Session
+) -> None:
+    db.add(
+        MetricResult(
+            id="metric-insufficient",
+            organization_id="org-one",
+            audit_run_id="run-metrics",
+            category="data_quality",
+            metric_key="group_coverage",
+            status="insufficient_evidence",
+            threshold_source={},
+            raw_counts={"unknown": 25},
+            method="deterministic_scan",
+            calculation_version="fairhire-binary-audit@2.0.0",
+            details={},
+        )
+    )
+    db.commit()
+    gate = client.get("/v1/ai-systems/sys-one/release-gate").json()
+    assert gate["status"] == "blocked"
+    assert any(blocker["code"] == "insufficient_evidence" for blocker in gate["blockers"])
+
+
+def test_expired_or_outdated_rule_pack_cannot_be_displayed_as_approved(
+    client: TestClient, db: Session
+) -> None:
+    organization = db.get(Organization, "org-one")
+    assert organization is not None
+    organization.policy_pack_expires_at = datetime.now(UTC) - timedelta(minutes=1)
+    db.commit()
+    gate = client.get("/v1/ai-systems/sys-one/release-gate").json()
+    assert gate["status"] == "blocked"
+    assert any(blocker["code"] == "rule_pack_expired" for blocker in gate["blockers"])
+
+    organization.policy_pack_expires_at = None
+    organization.policy_pack = "eu-core+de@2026.10"
+    db.commit()
+    gate = client.get("/v1/ai-systems/sys-one/release-gate").json()
+    assert gate["status"] == "blocked"
+    assert any(blocker["code"] == "rule_pack_outdated" for blocker in gate["blockers"])
 
 
 def test_remediation_task_and_retest_close_the_finding(client: TestClient) -> None:

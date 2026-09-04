@@ -608,7 +608,11 @@ export function FirstAuditWizard() {
           controlled path.
         </p>
       </header>
-      <ol className="stepper" aria-label="First audit progress">
+      <ol
+        className="stepper"
+        aria-label="First audit progress"
+        tabIndex={0}
+      >
         {steps.map((step, index) => (
           <li
             key={step}

@@ -1,0 +1,9 @@
+apiVersion: 1
+providers:
+  - name: FairHire pilot
+    folder: FairHire
+    type: file
+    disableDeletion: true
+    updateIntervalSeconds: 30
+    options:
+      path: /var/lib/grafana/dashboards

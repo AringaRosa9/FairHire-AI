@@ -1,3 +1,5 @@
+import time
+
 from fastapi import FastAPI, HTTPException, Request
 from fastapi.exceptions import RequestValidationError
 from fastapi.middleware.cors import CORSMiddleware
@@ -8,6 +10,7 @@ from .evidence_routes import router as evidence_router
 from .governance_routes import router as governance_router
 from .routes import router
 from .schemas import ProblemDetails
+from .telemetry import observe_request
 
 settings = get_settings()
 app = FastAPI(
@@ -34,6 +37,18 @@ app.add_middleware(
         "X-Scanner-Attestation",
     ],
 )
+
+
+@app.middleware("http")
+async def collect_http_metrics(request: Request, call_next):  # type: ignore[no-untyped-def]
+    started = time.perf_counter()
+    try:
+        response = await call_next(request)
+    except Exception:
+        observe_request(request, 500, time.perf_counter() - started)
+        raise
+    observe_request(request, response.status_code, time.perf_counter() - started)
+    return response
 
 
 @app.exception_handler(HTTPException)

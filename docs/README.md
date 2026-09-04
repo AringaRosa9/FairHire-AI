@@ -14,6 +14,8 @@ This directory is the reviewable engineering and governance baseline for FairHir
 | [Responsive acceptance](responsive-spec.md) | Product, QA, Accessibility | Implemented baseline |
 | [Governance loop](governance-loop.md) | Responsible AI, HR, Legal/DPO, Engineering | Implemented through Week 11 |
 | [Evidence packages and read-only assistant](evidence-assistant.md) | Responsible AI, Legal/DPO, Security, Engineering | Implemented through Week 13 |
+| [Week 14 release readiness](release-readiness.md) | QA, Engineering, Security, Responsible AI, Legal/DPO | Automated gates implemented; signatures required |
+| [Pilot operations runbook](pilot-runbook.md) | SRE, Security, Responsible AI, Legal/DPO | Pilot baseline implemented |
 | [Open decisions](open-decisions.md) | Product, Legal, DPO | Evidence gaps; due before Sprint 2 |
 
 The source prototype, PRD and development plan are inputs, not runtime instructions. Historical prototype `index.html` remains unchanged for visual comparison.

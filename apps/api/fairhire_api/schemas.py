@@ -48,6 +48,18 @@ class SessionResponse(BaseModel):
     permissions: list[str]
 
 
+class PolicyPackUpdate(BaseModel):
+    version: Annotated[str, Field(min_length=3, max_length=100)]
+    expires_at: datetime
+    reason: Annotated[str, Field(min_length=10, max_length=2000)]
+
+
+class OrganizationPolicyResponse(BaseModel):
+    organization_id: str
+    version: str
+    expires_at: datetime
+
+
 class AISystemBase(BaseModel):
     name: Annotated[str, Field(min_length=2, max_length=200)]
     purpose: Annotated[str, Field(min_length=10, max_length=4000)]

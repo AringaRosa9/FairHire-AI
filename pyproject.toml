@@ -10,7 +10,7 @@ members = ["apps/api", "apps/worker", "python/fairhire_domain"]
 fairhire-domain = { workspace = true }
 
 [tool.pytest.ini_options]
-testpaths = ["apps/api/tests", "python/fairhire_domain/tests", "tests/contract", "tests/security"]
+testpaths = ["apps/api/tests", "python/fairhire_domain/tests", "tests/benchmark", "tests/contract", "tests/security"]
 addopts = "-q --strict-markers"
 
 [tool.ruff]

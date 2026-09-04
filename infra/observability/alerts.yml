@@ -1,0 +1,39 @@
+groups:
+  - name: fairhire-pilot
+    rules:
+      - alert: FairHireApiUnavailable
+        expr: up{job="fairhire-api"} == 0
+        for: 2m
+        labels:
+          severity: critical
+        annotations:
+          summary: FairHire API is unavailable
+          runbook: docs/pilot-runbook.md#api-or-dependency-outage
+      - alert: FairHireDependencyUnavailable
+        expr: fairhire_dependency_ready == 0
+        for: 2m
+        labels:
+          severity: critical
+        annotations:
+          summary: A required FairHire dependency is unavailable
+          runbook: docs/pilot-runbook.md#api-or-dependency-outage
+      - alert: FairHireApiHighErrorRate
+        expr: >-
+          sum(rate(fairhire_http_requests_total{status=~"5.."}[5m]))
+          / clamp_min(sum(rate(fairhire_http_requests_total[5m])), 0.001) > 0.05
+        for: 10m
+        labels:
+          severity: warning
+        annotations:
+          summary: FairHire API 5xx ratio exceeds 5%
+          runbook: docs/pilot-runbook.md#elevated-api-errors
+      - alert: FairHireApiLatencySlo
+        expr: >-
+          histogram_quantile(0.95,
+          sum by (le) (rate(fairhire_http_request_duration_seconds_bucket[5m]))) > 0.5
+        for: 10m
+        labels:
+          severity: warning
+        annotations:
+          summary: FairHire API P95 exceeds 500 ms
+          runbook: docs/pilot-runbook.md#latency-or-queue-saturation

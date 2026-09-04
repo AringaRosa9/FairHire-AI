@@ -18,7 +18,9 @@
     "test:e2e": "npm run test:e2e --workspace @fairhire/web",
     "generate:client": "npm run generate --workspace @fairhire/api-client",
     "typecheck": "npm run typecheck --workspaces --if-present",
-    "format:check": "prettier --check ."
+    "format:check": "prettier --check .",
+    "verify:week14": "bash scripts/verify_week14.sh",
+    "sbom": "bash scripts/generate_sbom.sh"
   },
   "devDependencies": {
     "prettier": "3.8.2"

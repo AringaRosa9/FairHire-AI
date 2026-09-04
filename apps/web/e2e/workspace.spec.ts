@@ -1,4 +1,5 @@
 import { expect, test } from "@playwright/test";
+import AxeBuilder from "@axe-core/playwright";
 
 test("portfolio exposes release evidence and primary navigation", async ({
   page,
@@ -113,4 +114,60 @@ test("evidence package and read-only assistant expose their safety boundaries", 
       () => document.documentElement.scrollWidth <= window.innerWidth,
     ),
   ).toBe(true);
+});
+
+test("core workflows have no automatic WCAG A or AA violations", async ({
+  page,
+}) => {
+  const routes = [
+    "/portfolio",
+    "/systems",
+    "/onboarding",
+    "/audits/new",
+    "/findings",
+    "/approvals",
+    "/reports",
+    "/assistant",
+  ];
+  for (const route of routes) {
+    await page.goto(route);
+    const results = await new AxeBuilder({ page })
+      .withTags(["wcag2a", "wcag2aa", "wcag21aa", "wcag22aa"])
+      .analyze();
+    expect(results.violations, `Accessibility violations on ${route}`).toEqual(
+      [],
+    );
+  }
+});
+
+test("keyboard users can skip repeated navigation", async ({
+  page,
+}, testInfo) => {
+  await page.goto("/portfolio");
+  if (
+    testInfo.project.name.includes("webkit") ||
+    testInfo.project.name.includes("mobile")
+  ) {
+    // macOS WebKit follows the OS Full Keyboard Access preference for links.
+    await page.getByRole("link", { name: "Skip to content" }).focus();
+  } else {
+    await page.keyboard.press("Tab");
+  }
+  await expect(
+    page.getByRole("link", { name: "Skip to content" }),
+  ).toBeFocused();
+  await page.keyboard.press("Enter");
+  await expect(page.locator("#main-content")).toBeFocused();
+});
+
+test("Chinese navigation is selectable, labelled, and persistent", async ({
+  page,
+}) => {
+  await page.goto("/portfolio");
+  await page.getByRole("button", { name: "Switch to Chinese" }).click();
+  await expect(page.locator("html")).toHaveAttribute("lang", "zh-CN");
+  await expect(page.getByRole("link", { name: "概览" })).toBeVisible();
+  await expect(page.getByRole("navigation", { name: "主导航" })).toBeVisible();
+  await page.reload();
+  await expect(page.getByRole("button", { name: "切换为英文" })).toBeVisible();
 });

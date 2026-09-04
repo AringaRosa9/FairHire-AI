@@ -3594,6 +3594,58 @@
         "title": "ModelVersionResponse",
         "type": "object"
       },
+      "OrganizationPolicyResponse": {
+        "properties": {
+          "expires_at": {
+            "format": "date-time",
+            "title": "Expires At",
+            "type": "string"
+          },
+          "organization_id": {
+            "title": "Organization Id",
+            "type": "string"
+          },
+          "version": {
+            "title": "Version",
+            "type": "string"
+          }
+        },
+        "required": [
+          "organization_id",
+          "version",
+          "expires_at"
+        ],
+        "title": "OrganizationPolicyResponse",
+        "type": "object"
+      },
+      "PolicyPackUpdate": {
+        "properties": {
+          "expires_at": {
+            "format": "date-time",
+            "title": "Expires At",
+            "type": "string"
+          },
+          "reason": {
+            "maxLength": 2000,
+            "minLength": 10,
+            "title": "Reason",
+            "type": "string"
+          },
+          "version": {
+            "maxLength": 100,
+            "minLength": 3,
+            "title": "Version",
+            "type": "string"
+          }
+        },
+        "required": [
+          "version",
+          "expires_at",
+          "reason"
+        ],
+        "title": "PolicyPackUpdate",
+        "type": "object"
+      },
       "PortfolioSummary": {
         "properties": {
           "active_audit_runs": {
@@ -7520,6 +7572,50 @@
         ]
       }
     },
+    "/v1/health/live": {
+      "get": {
+        "operationId": "liveness_v1_health_live_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": {
+                    "type": "string"
+                  },
+                  "title": "Response Liveness V1 Health Live Get",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Liveness",
+        "tags": [
+          "platform"
+        ]
+      }
+    },
+    "/v1/health/ready": {
+      "get": {
+        "operationId": "ready_v1_health_ready_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Ready",
+        "tags": [
+          "platform"
+        ]
+      }
+    },
     "/v1/jobs/{job_id}": {
       "get": {
         "operationId": "get_job_v1_jobs__job_id__get",
@@ -8020,6 +8116,97 @@
         "summary": "Save Onboarding Draft",
         "tags": [
           "onboarding"
+        ]
+      }
+    },
+    "/v1/organization/policy-pack": {
+      "put": {
+        "operationId": "update_policy_pack_v1_organization_policy_pack_put",
+        "parameters": [
+          {
+            "in": "header",
+            "name": "X-Organization-ID",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Organization-Id"
+            }
+          },
+          {
+            "in": "header",
+            "name": "X-Dev-User",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Dev-User"
+            }
+          },
+          {
+            "in": "header",
+            "name": "Idempotency-Key",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Idempotency-Key"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PolicyPackUpdate"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OrganizationPolicyResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Update Policy Pack",
+        "tags": [
+          "identity"
         ]
       }
     },

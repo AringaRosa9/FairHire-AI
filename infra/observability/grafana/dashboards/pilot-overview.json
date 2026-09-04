@@ -1,0 +1,52 @@
+{
+  "annotations": { "list": [] },
+  "editable": false,
+  "panels": [
+    {
+      "type": "stat",
+      "title": "API available",
+      "targets": [{ "expr": "up{job=\"fairhire-api\"}", "refId": "A" }],
+      "gridPos": { "h": 6, "w": 6, "x": 0, "y": 0 }
+    },
+    {
+      "type": "stat",
+      "title": "Required dependencies ready",
+      "targets": [{ "expr": "sum(fairhire_dependency_ready)", "refId": "A" }],
+      "gridPos": { "h": 6, "w": 6, "x": 6, "y": 0 }
+    },
+    {
+      "type": "timeseries",
+      "title": "HTTP request rate by status",
+      "targets": [
+        {
+          "expr": "sum by (status) (rate(fairhire_http_requests_total[5m]))",
+          "refId": "A"
+        }
+      ],
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 0 }
+    },
+    {
+      "type": "timeseries",
+      "title": "API latency percentiles",
+      "targets": [
+        {
+          "expr": "histogram_quantile(0.95, sum by (le) (rate(fairhire_http_request_duration_seconds_bucket[5m])))",
+          "legendFormat": "P95",
+          "refId": "A"
+        },
+        {
+          "expr": "histogram_quantile(0.50, sum by (le) (rate(fairhire_http_request_duration_seconds_bucket[5m])))",
+          "legendFormat": "P50",
+          "refId": "B"
+        }
+      ],
+      "gridPos": { "h": 8, "w": 24, "x": 0, "y": 8 }
+    }
+  ],
+  "schemaVersion": 41,
+  "tags": ["fairhire", "pilot"],
+  "templating": { "list": [] },
+  "time": { "from": "now-6h", "to": "now" },
+  "title": "FairHire pilot overview",
+  "uid": "fairhire-pilot"
+}

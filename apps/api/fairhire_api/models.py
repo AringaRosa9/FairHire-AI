@@ -28,6 +28,7 @@ class Organization(Base):
     name: Mapped[str] = mapped_column(String(200), nullable=False)
     region: Mapped[str] = mapped_column(String(24), nullable=False, default="eu")
     policy_pack: Mapped[str] = mapped_column(String(100), nullable=False)
+    policy_pack_expires_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     retention_policy: Mapped[dict[str, object]] = mapped_column(JSON, nullable=False, default=dict)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
 

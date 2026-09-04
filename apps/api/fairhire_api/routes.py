@@ -8,7 +8,7 @@ from typing import Annotated, Any, Literal
 from fairhire_domain.access import Permission
 from fairhire_domain.audit import validate_audit_config
 from fairhire_domain.data_contract import FieldRole
-from fastapi import APIRouter, Depends, Header, HTTPException, Query, status
+from fastapi import APIRouter, Depends, Header, HTTPException, Query, Response, status
 from pydantic import BaseModel
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session
@@ -59,6 +59,8 @@ from .schemas import (
     MetricResultResponse,
     ModelVersionCreate,
     ModelVersionResponse,
+    OrganizationPolicyResponse,
+    PolicyPackUpdate,
     PortfolioSummary,
     SessionResponse,
     UploadComplete,
@@ -67,9 +69,15 @@ from .schemas import (
 )
 from .security import Principal, get_principal, require_idempotency_key, require_permission
 from .storage import presign_upload
+from .telemetry import prometheus_metrics, readiness, readiness_metrics
 
 router = APIRouter(prefix="/v1")
 ALLOWED_FORMATS = {".csv": "csv", ".parquet": "parquet", ".jsonl": "jsonl"}
+ALLOWED_CONTENT_TYPES = {
+    ".csv": {"text/csv", "application/csv", "text/plain"},
+    ".parquet": {"application/vnd.apache.parquet", "application/octet-stream"},
+    ".jsonl": {"application/x-ndjson", "application/jsonl", "application/json"},
+}
 UNSAFE_FORMATS = {".pkl", ".pickle", ".joblib"}
 
 
@@ -154,9 +162,50 @@ def _dataset_response(db: Session, dataset: Dataset) -> DatasetResponse:
     )
 
 
+def _refresh_approved_release_gates(
+    db: Session, organization_id: str, systems: list[AISystem]
+) -> None:
+    approved = [system for system in systems if system.release_status == "approved"]
+    if not approved:
+        return
+    # Local import avoids a module cycle: governance routes use the shared ownership helpers here.
+    from .governance_routes import _release_gate
+
+    for system in approved:
+        _release_gate(db, organization_id, system, actor_id="platform")
+    db.commit()
+
+
 @router.get("/health", tags=["platform"])
 def health() -> dict[str, str]:
     return {"status": "ok", "version": __version__}
+
+
+@router.get("/health/live", tags=["platform"])
+def liveness() -> dict[str, str]:
+    return {"status": "ok", "version": __version__}
+
+
+@router.get("/health/ready", tags=["platform"])
+def ready(
+    db: Annotated[Session, Depends(get_db)],
+    settings: Annotated[Settings, Depends(get_settings)],
+) -> Response:
+    healthy, checks = readiness(db, settings)
+    return Response(
+        content=json.dumps({"status": "ready" if healthy else "not_ready", "checks": checks}),
+        status_code=200 if healthy else 503,
+        media_type="application/json",
+    )
+
+
+@router.get("/metrics", tags=["platform"], include_in_schema=False)
+def metrics(
+    db: Annotated[Session, Depends(get_db)],
+    settings: Annotated[Settings, Depends(get_settings)],
+) -> Response:
+    content = prometheus_metrics() + readiness_metrics(db, settings)
+    return Response(content, media_type="text/plain; version=0.0.4")
 
 
 @router.get("/session", response_model=SessionResponse, tags=["identity"])
@@ -172,11 +221,95 @@ def session(principal: Annotated[Principal, Depends(get_principal)]) -> SessionR
     )
 
 
+@router.put(
+    "/organization/policy-pack",
+    response_model=OrganizationPolicyResponse,
+    tags=["identity"],
+)
+def update_policy_pack(
+    payload: PolicyPackUpdate,
+    principal: Annotated[Principal, Depends(require_permission(Permission.POLICY_ADMIN))],
+    db: Annotated[Session, Depends(get_db)],
+    idempotency_key: Annotated[str, Depends(require_idempotency_key)],
+) -> OrganizationPolicyResponse:
+    expires_at = (
+        payload.expires_at if payload.expires_at.tzinfo else payload.expires_at.replace(tzinfo=UTC)
+    )
+    if expires_at <= datetime.now(UTC):
+        raise HTTPException(
+            status.HTTP_422_UNPROCESSABLE_CONTENT, "Rule-pack expiry must be future"
+        )
+    action = "update_policy_pack"
+    if replay := _replay(
+        db,
+        principal.organization_id,
+        idempotency_key,
+        action,
+        payload,
+        OrganizationPolicyResponse,
+    ):
+        return replay
+    organization = db.get(Organization, principal.organization_id)
+    if organization is None:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "Organization not found")
+    previous = {
+        "version": organization.policy_pack,
+        "expires_at": (
+            organization.policy_pack_expires_at.isoformat()
+            if organization.policy_pack_expires_at
+            else None
+        ),
+    }
+    organization.policy_pack = payload.version
+    organization.policy_pack_expires_at = expires_at
+    response = OrganizationPolicyResponse(
+        organization_id=organization.id,
+        version=organization.policy_pack,
+        expires_at=expires_at,
+    )
+    append_event(
+        db,
+        organization_id=principal.organization_id,
+        actor_id=principal.user_id,
+        action="policy_pack.updated",
+        resource_type="organization",
+        resource_id=organization.id,
+        payload={
+            "before": previous,
+            "after": {"version": payload.version, "expires_at": expires_at.isoformat()},
+        },
+        reason=payload.reason,
+    )
+    _record_response(db, principal.organization_id, idempotency_key, action, payload, response, 200)
+    db.flush()
+    systems = list(
+        db.scalars(
+            select(AISystem).where(AISystem.organization_id == principal.organization_id)
+        ).all()
+    )
+    # Version changes immediately invalidate older audit evidence and approved display state.
+    from .governance_routes import _release_gate
+
+    for system in systems:
+        _release_gate(db, principal.organization_id, system, actor_id=principal.user_id)
+    db.commit()
+    return response
+
+
 @router.get("/portfolio", response_model=PortfolioSummary, tags=["portfolio"])
 def portfolio(
     principal: Annotated[Principal, Depends(require_permission(Permission.SYSTEM_READ))],
     db: Annotated[Session, Depends(get_db)],
 ) -> PortfolioSummary:
+    approved_systems = list(
+        db.scalars(
+            select(AISystem).where(
+                AISystem.organization_id == principal.organization_id,
+                AISystem.release_status == "approved",
+            )
+        ).all()
+    )
+    _refresh_approved_release_gates(db, principal.organization_id, approved_systems)
     release_rows = db.execute(
         select(AISystem.release_status, func.count())
         .where(AISystem.organization_id == principal.organization_id)
@@ -269,6 +402,7 @@ def list_ai_systems(
         .offset((page - 1) * page_size)
         .limit(page_size)
     ).all()
+    _refresh_approved_release_gates(db, principal.organization_id, list(systems))
     return AISystemListResponse(
         items=[AISystemResponse.model_validate(system) for system in systems],
         page=page,
@@ -283,9 +417,9 @@ def get_ai_system(
     principal: Annotated[Principal, Depends(require_permission(Permission.SYSTEM_READ))],
     db: Annotated[Session, Depends(get_db)],
 ) -> AISystemResponse:
-    return AISystemResponse.model_validate(
-        _owned(db, AISystem, system_id, principal.organization_id)
-    )
+    system = _owned(db, AISystem, system_id, principal.organization_id)
+    _refresh_approved_release_gates(db, principal.organization_id, [system])
+    return AISystemResponse.model_validate(system)
 
 
 @router.post(
@@ -600,6 +734,16 @@ def initiate_upload(
     settings: Annotated[Settings, Depends(get_settings)],
     idempotency_key: Annotated[str, Depends(require_idempotency_key)],
 ) -> UploadInitiateResponse:
+    if (
+        "\x00" in payload.filename
+        or "/" in payload.filename
+        or "\\" in payload.filename
+        or Path(payload.filename).name != payload.filename
+    ):
+        raise HTTPException(
+            status.HTTP_422_UNPROCESSABLE_CONTENT,
+            "Filename must not contain a path or null byte",
+        )
     suffix = Path(payload.filename).suffix.lower()
     if suffix in UNSAFE_FORMATS:
         raise HTTPException(
@@ -609,6 +753,12 @@ def initiate_upload(
     if suffix not in ALLOWED_FORMATS:
         raise HTTPException(
             status.HTTP_422_UNPROCESSABLE_CONTENT, "Only CSV, Parquet, and JSONL are accepted"
+        )
+    normalized_content_type = payload.content_type.split(";", maxsplit=1)[0].strip().lower()
+    if normalized_content_type not in ALLOWED_CONTENT_TYPES[suffix]:
+        raise HTTPException(
+            status.HTTP_422_UNPROCESSABLE_CONTENT,
+            f"Content-Type does not match the {suffix} dataset format",
         )
     if replay := _replay(
         db,

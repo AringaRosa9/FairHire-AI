@@ -23,6 +23,18 @@ jobs:
       - run: npm test
       - run: npm run build
 
+  browser-regression:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - run: npx playwright install --with-deps chromium firefox webkit
+      - run: npm run test:e2e
+
   python:
     runs-on: ubuntu-latest
     services:
@@ -57,3 +69,46 @@ jobs:
         working-directory: apps/api
       - run: pytest
       - run: python apps/api/scripts/export_openapi.py --check
+
+  supply-chain:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: npm ci
+      - run: pip install uv==0.10.6
+      - run: bash scripts/generate_sbom.sh artifacts/sbom
+      - run: npm audit --registry=https://registry.npmjs.org --omit=dev --audit-level=high
+      - run: >-
+          uv export --locked --all-packages --format requirements.txt
+          --no-emit-workspace --output-file artifacts/python-requirements.txt
+      - run: uvx pip-audit --strict --requirement artifacts/python-requirements.txt
+      - uses: actions/upload-artifact@v4
+        with:
+          name: cyclonedx-sbom
+          path: artifacts/sbom
+
+  million-row-benchmark:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+      - run: pip install -e python/fairhire_domain
+      - run: >-
+          python tests/benchmark/benchmark_million_rows.py
+          --rows 1000000
+          --max-seconds 1200
+          --output million-row-benchmark.json
+      - uses: actions/upload-artifact@v4
+        with:
+          name: million-row-benchmark
+          path: million-row-benchmark.json

@@ -16,6 +16,7 @@ from .models import (
     Finding,
     FindingRetest,
     MetricResult,
+    Organization,
     RemediationTask,
 )
 from .routes import _owned, _record_response, _replay
@@ -84,6 +85,7 @@ def _reopen_expired_acceptances(db: Session, organization_id: str, *, now: datet
     ).all()
     for finding in expired:
         previous_until = finding.accepted_until
+        assert previous_until is not None
         finding.status = "open"
         append_event(
             db,
@@ -111,6 +113,7 @@ def _expire_approvals(db: Session, organization_id: str, *, now: datetime) -> li
         )
     ).all()
     for approval in expired:
+        assert approval.expires_at is not None
         approval.decision = "expired"
         append_event(
             db,
@@ -153,6 +156,67 @@ def _release_gate(
         )
         for item in findings
     ]
+    latest_run = db.scalar(
+        select(AuditRun)
+        .where(
+            AuditRun.organization_id == organization_id,
+            AuditRun.ai_system_id == system.id,
+            AuditRun.status == "succeeded",
+        )
+        .order_by(AuditRun.completed_at.desc().nullslast(), AuditRun.submitted_at.desc())
+        .limit(1)
+    )
+    if latest_run is not None:
+        insufficient_metrics = list(
+            db.scalars(
+                select(MetricResult).where(
+                    MetricResult.organization_id == organization_id,
+                    MetricResult.audit_run_id == latest_run.id,
+                    MetricResult.status == "insufficient_evidence",
+                )
+            ).all()
+        )
+        blockers.extend(
+            ReleaseGateBlocker(
+                code="insufficient_evidence",
+                message=f"Latest audit has insufficient evidence: {item.metric_key}",
+                resource_id=item.id,
+            )
+            for item in insufficient_metrics
+        )
+        organization = db.get(Organization, organization_id)
+        if organization is not None and latest_run.policy_pack_version != organization.policy_pack:
+            blockers.append(
+                ReleaseGateBlocker(
+                    code="rule_pack_outdated",
+                    message=(
+                        "Latest audit used an outdated rule pack: "
+                        f"{latest_run.policy_pack_version}; current is {organization.policy_pack}"
+                    ),
+                    resource_id=latest_run.id,
+                )
+            )
+    else:
+        blockers.append(
+            ReleaseGateBlocker(
+                code="audit_missing",
+                message="No successful Audit Run is available for this system",
+                resource_id=system.id,
+            )
+        )
+    organization = db.get(Organization, organization_id)
+    if (
+        organization is not None
+        and organization.policy_pack_expires_at is not None
+        and _utc(organization.policy_pack_expires_at) <= now
+    ):
+        blockers.append(
+            ReleaseGateBlocker(
+                code="rule_pack_expired",
+                message=f"Rule pack {organization.policy_pack} has expired and must be reviewed",
+                resource_id=organization.id,
+            )
+        )
     chain_version = _latest_chain_version(db, organization_id, system.id)
     approvals: list[Approval] = []
     if chain_version is not None:

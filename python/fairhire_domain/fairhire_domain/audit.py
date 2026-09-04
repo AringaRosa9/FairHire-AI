@@ -90,10 +90,15 @@ def _bootstrap_comparison(
     *,
     iterations: int,
     seed: int,
+    max_sample_size: int,
 ) -> tuple[float, float] | None:
     if not comparison or not reference or iterations < 1:
         return None
     generator = random.Random(seed)
+    if len(comparison) > max_sample_size:
+        comparison = generator.sample(comparison, max_sample_size)
+    if len(reference) > max_sample_size:
+        reference = generator.sample(reference, max_sample_size)
     estimates: list[float] = []
     for _ in range(iterations):
         sampled_comparison = [generator.choice(comparison) for _ in comparison]
@@ -377,8 +382,15 @@ def data_quality_results(
     )
 
     training_hashes = {str(item) for item in config.get("training_identifier_hashes", [])}
-    audit_hashes = {sha256(str(identifier).encode()).hexdigest() for identifier in identifiers}
-    overlap = len(training_hashes.intersection(audit_hashes))
+    # Avoid hashing every row when the caller did not supply a training-set reference.
+    overlap = (
+        sum(
+            sha256(str(identifier).encode()).hexdigest() in training_hashes
+            for identifier in identifiers
+        )
+        if training_hashes
+        else 0
+    )
     results.append(
         _quality_result(
             "train_test_overlap",
@@ -463,6 +475,7 @@ def fairness_results(rows: list[dict[str, Any]], config: dict[str, Any]) -> list
     min_samples = int(config.get("minimum_samples", 200))
     hard_floor = int(config.get("hard_suppression_floor", 20))
     iterations = int(config.get("bootstrap_iterations", 1000))
+    bootstrap_max_sample_size = int(config.get("bootstrap_max_sample_size", 10_000))
     seed = int(config.get("random_seed", 1729))
     ratio_threshold = float(config.get("demographic_parity_ratio_threshold", 0.8))
     difference_threshold = float(config.get("difference_threshold", 0.1))
@@ -629,6 +642,7 @@ def fairness_results(rows: list[dict[str, Any]], config: dict[str, Any]) -> list
                     comparison_statistic,
                     iterations=iterations,
                     seed=seed + sum(map(ord, f"{attribute}:{group}:{metric}")),
+                    max_sample_size=bootstrap_max_sample_size,
                 )
                 results.append(
                     {
@@ -678,6 +692,7 @@ def fairness_results(rows: list[dict[str, Any]], config: dict[str, Any]) -> list
                         "details": {
                             "calculation_version": CALCULATION_VERSION,
                             "bootstrap_iterations": iterations,
+                            "bootstrap_max_sample_size": bootstrap_max_sample_size,
                             "random_seed": seed,
                             "legal_determination": False,
                             "suppressed_below_floor": suppressed,
@@ -695,14 +710,14 @@ def run_binary_audit(
     if not rows:
         raise ValueError("At least one row is required for an audit")
     validate_audit_config(config)
-    metrics = (
-        data_quality_results(rows, config)
-        + fairness_results(rows, config)
-        + proxy_results(rows, config)
-        + counterfactual_results(rows, config)
-        + explainability_results(rows, config)
-        + drift_results(rows, baseline_rows, config)
-    )
+    metrics = data_quality_results(rows, config) + fairness_results(rows, config)
+    if not bool(config.get("basic_audit_only", False)):
+        metrics += (
+            proxy_results(rows, config)
+            + counterfactual_results(rows, config)
+            + explainability_results(rows, config)
+            + drift_results(rows, baseline_rows, config)
+        )
     counts = Counter(str(metric["status"]) for metric in metrics)
     return {
         "calculation_version": CALCULATION_VERSION,
@@ -724,6 +739,9 @@ def validate_audit_config(config: dict[str, Any]) -> None:
         raise ValueError("minimum_samples must be at least 20 and not below the privacy floor")
     if not 20 <= iterations <= 10_000:
         raise ValueError("bootstrap_iterations must be between 20 and 10000")
+    bootstrap_max_sample_size = int(config.get("bootstrap_max_sample_size", 10_000))
+    if not 1_000 <= bootstrap_max_sample_size <= 100_000:
+        raise ValueError("bootstrap_max_sample_size must be between 1000 and 100000")
     ratio_threshold = float(config.get("demographic_parity_ratio_threshold", 0.8))
     difference_threshold = float(config.get("difference_threshold", 0.1))
     if not 0 <= ratio_threshold <= 1 or not 0 <= difference_threshold <= 1:

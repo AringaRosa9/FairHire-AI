@@ -48,6 +48,13 @@ from .security import Principal, require_idempotency_key, require_permission
 router = APIRouter(prefix="/v1")
 
 
+def _safe_csv_value(value: object) -> object:
+    """Prevent spreadsheet applications from interpreting exported evidence as a formula."""
+    if isinstance(value, str) and value.lstrip().startswith(("=", "+", "-", "@")):
+        return f"'{value}"
+    return value
+
+
 def _canonical_hash(value: object) -> str:
     encoded = json.dumps(value, sort_keys=True, separators=(",", ":"), ensure_ascii=False)
     return hashlib.sha256(encoded.encode()).hexdigest()
@@ -654,7 +661,10 @@ def download_report(
             ],
         )
         writer.writeheader()
-        writer.writerows(report.evidence_index)
+        writer.writerows(
+            {key: _safe_csv_value(value) for key, value in row.items()}
+            for row in report.evidence_index
+        )
         content = buffer.getvalue().encode("utf-8-sig")
         media_type = "text/csv"
     else:

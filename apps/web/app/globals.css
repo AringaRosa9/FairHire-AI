@@ -235,6 +235,21 @@ textarea:focus-visible,
   color: var(--color-ink-700);
   font-size: 0.72rem;
 }
+.locale-switch {
+  min-width: 44px;
+  min-height: 44px;
+  padding: 0.35rem 0.6rem;
+  border: 1px solid var(--color-ink-300);
+  border-radius: var(--radius-1);
+  background: transparent;
+  color: var(--color-green-800);
+  font-size: 0.75rem;
+  font-weight: 800;
+  cursor: pointer;
+}
+.locale-switch:hover {
+  background: var(--color-green-100);
+}
 .avatar {
   width: 2.15rem;
   height: 2.15rem;

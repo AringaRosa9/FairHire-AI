@@ -1,4 +1,4 @@
-.PHONY: bootstrap dev down api-test web-test contract lint
+.PHONY: bootstrap dev down api-test web-test contract lint verify-week14 sbom
 
 bootstrap:
 	cp .env.example .env
@@ -24,3 +24,8 @@ lint:
 	npm run lint
 	docker compose run --rm api ruff check .
 
+verify-week14:
+	bash scripts/verify_week14.sh
+
+sbom:
+	bash scripts/generate_sbom.sh
